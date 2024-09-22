@@ -22,7 +22,7 @@
   "bugs": {
     "url": "https://github.com/creativetimofficial/argon-dashboard-react/issues"
   },
-  "homepage": "https://demos.creative-tim.com/argon-dashboard-react/",
+  "homepage": "https://yourusername.github.io/your-repo-name",
   "scripts": {
     "start": "react-scripts start",
     "build": "cross-env PUBLIC_URL=/ react-scripts build",
@@ -31,7 +31,9 @@
     "install:clean": "rm -rf node_modules/ && rm -rf package-lock.json && npm install && npm start",
     "compile:scss": "sass src/assets/scss/argon-dashboard-react.scss src/assets/css/argon-dashboard-react.css",
     "minify:scss": "sass src/assets/scss/argon-dashboard-react.scss src/assets/css/argon-dashboard-react.min.css --style compressed",
-    "build:scss": "npm run compile:scss && npm run minify:scss && npm run map:scss"
+    "build:scss": "npm run compile:scss && npm run minify:scss && npm run map:scss",
+    "predeploy": "npm run build",
+    "deploy": "gh-pages -d build"
   },
   "eslintConfig": {
     "extends": "react-app"
@@ -64,6 +66,7 @@
   },
   "devDependencies": {
     "cross-env": "^7.0.3",
+    "gh-pages": "^6.1.1",
     "gulp": "4.0.2",
     "gulp-append-prepend": "1.0.9"
   },
