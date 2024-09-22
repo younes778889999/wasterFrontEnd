@@ -1,0 +1,73 @@
+.sidebar {
+  height: 100%; /* Full-height */
+  width: 0; /* Initially 0 width */
+  position: fixed; /* Stay in place */
+  z-index: 3; /* On top of the content */
+  top: 0;
+  right: 0;
+  background: linear-gradient(to left, rgba(173, 216, 230), white); /* Light blue to white */
+  overflow-x: hidden; /* Disable horizontal scroll */
+  padding-top: 60px; /* Place content from the top */
+  transition: 0.5s; /* Transition effect */
+  box-shadow: -2px 0 5px rgba(0, 0, 0, 0.2); /* Subtle shadow for separation */
+}
+
+.sidebar div {
+  padding: 10px; /* No padding inside the sidebar */
+  margin: 0; /* No margin */
+}
+
+.sidebar a {
+  text-align: right; /* Align text to the right */
+  padding: 12px 20px; /* Adjusted padding */
+  margin-right: 10px; /* Right margin for the contents */
+  text-decoration: none;
+  font-size: 16px; /* Increased text size */
+  font-weight: bold; /* Make text bold */
+  color: #333; /* Darker text color */
+  display: flex; /* Use flexbox for alignment */
+  align-items: center; /* Center items vertically */
+  transition: 0.3s;
+  border-radius: 5px; /* Rounded corners for button effect */
+}
+
+.sidebar a i {
+  margin-right: 10px;
+  margin-left: 15px;
+}
+
+.sidebar a:hover {
+  background-color: rgba(255, 255, 255, 0.3); /* Light background on hover */
+  color: #000; /* Darker text color on hover */
+}
+
+.sidebar ul {
+  padding: 0; /* Remove padding from the list */
+  margin: 10px 0; /* Margin for the list */
+}
+
+/* Additional margin for table names */
+.dotted-list li {
+  margin-right: 20px; /* Increased margin for table names */
+}
+
+#main.sidebar-open {
+  margin-right: 250px; /* Push main content when sidebar opens */
+}
+
+.togglebtn {
+  font-size: 18px;
+  cursor: pointer;
+  background-color: #111;
+  color: white;
+  padding: 10px 15px;
+  border: none;
+  position: fixed; /* Fixed to the right */
+  right: 0;
+  top: 20px; /* Adjust as needed */
+  z-index: 3; /* Above the sidebar */
+}
+
+.togglebtn:hover {
+  background-color: #444;
+}
