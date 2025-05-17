@@ -68,7 +68,8 @@
     "react-scripts": "^5.0.1",
     "reactstrap": "8.10.0",
     "rsuite": "^5.70.3",
-    "sass": "1.69.5"
+    "sass": "1.69.5",
+    "serve": "^14.2.4"
   },
   "devDependencies": {
     "cross-env": "^7.0.3",

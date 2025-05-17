@@ -1,9 +1,12 @@
 {
     "build": {
-      "buildCommand": "npm run build",
-      "outputDirectory": "build"
+      "env": {
+        "CI": "false"
+      },
+      "command": "npm run build"
     },
-    "deploy": {
-      "startCommand": "serve -s build"
+    "start": {
+      "command": "serve -s build"
     }
   }
+  
