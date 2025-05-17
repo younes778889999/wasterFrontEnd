@@ -4,4 +4,4 @@ package-lock.json
 /build
 .eslintcache
 .env
-.DS_Store
+.DS_Store".env" 
