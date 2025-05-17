@@ -52,7 +52,7 @@ const AuthNavbar = () => {
                 </NavLink>
               </NavItem>
               <NavItem>
-                <NavLink to="/admin/table1" tag={Link}>
+                <NavLink to="/admin/trucks" tag={Link}>
                   <i className="ni ni-bullet-list-67" />
                   <span className="nav-link-inner--text">الجدول 1</span>
                 </NavLink>

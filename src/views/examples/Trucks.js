@@ -1,5 +1,5 @@
 import React, { useEffect ,useState } from "react";
-import { Table, Pagination, Modal, Button, Form,SelectPicker } from 'rsuite';
+import { Table, Pagination, Modal, Button,Checkbox,CheckboxGroup, Form,SelectPicker } from 'rsuite';
 import Header from "components/Headers/Header.js";
 import 'rsuite/dist/rsuite.min.css';
 import CustomPagination from 'components/CustomPagination/CustomPagination';
@@ -15,7 +15,9 @@ const App = () => {
   const [sortType, setSortType] = useState(null);
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState([]);
-  const [currentData, setCurrentData] = useState({ Truck_model: '',Availability:'',Plate_number: '',Remarks: '',Maintenance: '' ,Location:''});
+  const [drivers, setDrivers] = useState([]); 
+  const [workers, setWorkers] = useState([]); 
+  const [currentData, setCurrentData] = useState({Truck_model: '',Availability:'',Plate_number: '',Remarks: '',Maintenance: '',driver: null, worker_set: [] });
   const [isEditing, setIsEditing] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const backendUrl = process.env.REACT_APP_BACKEND_URL;
@@ -25,93 +27,92 @@ const App = () => {
     setIsEditing(!!rowData.id); 
     setIsModalOpen(true);
   };
-const [availabilityOptions, setAvailabilityOptions] = useState([]);
-const [locationOptions, setLocationOptions] = useState([]);
 
+  const fetchData = async () => {
+    try {
+      fetch(`${backendUrl}/Staff/drivers/`)
+      .then(response => response.json())
+      .then(data => setDrivers(data));
 
-  const fetchData = async() => {
-    console.log('fetching...')
-    const [trucksResponse,availabilityResponse, locationResponse] = await Promise.all([
-      fetch(`${backendUrl}/Staff/trucks/`),
-      fetch(`${backendUrl}/Staff/truck_ava/`),
-      fetch(`${backendUrl}/Staff/location_names/`)
-    ]);
-    const [trucksData,availabilityData,locationData] = await Promise.all([
-      trucksResponse.json(),
-      availabilityResponse.json(),
-    locationResponse.json()
-    ]);
-    const combinedData = trucksData;
-    const conditionData = availabilityData;
-    const LocData = locationData;
-    setAvailabilityOptions(conditionData);
-    setLocationOptions(LocData);
-    setData(combinedData);
-    console.log(conditionData)
-    console.log(LocData)
-    console.log(combinedData)
-    return combinedData , conditionData , LocData
-  }
+    fetch(`${backendUrl}/Staff/workers/`)
+      .then(response => response.json())
+      .then(data => setWorkers(data));
+      const response = await fetch(`${backendUrl}/Staff/trucks/`);
+      
+      // Check if the response is OK (status 200-299)
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+  
+      const trucksData = await response.json();
+      setData(trucksData); // Update your state with the data
+      return trucksData;
+    } catch (error) {
+      console.error('Error fetching data:', error);
+    }
+  };
+  
   useEffect(() => {
-    fetchData()
-  }, [])
-  console.log(availabilityOptions)
-  console.log(locationOptions)
-  console.log(data)
+    
+    fetchData();
+  }, []);
   const handleSave = async () => {
-      const payload = {
-        Truck_model: currentData.Truck_model,
-        Availability: currentData.Availability, 
-        Plate_number: currentData.Plate_number,
-        Maintenance: currentData.Maintenance,
-        Location: currentData.Location,
-        Remarks: currentData.Remarks
-      };
-
-    console.log("POST Payload:", payload); 
-    if (isEditing) {
-      try {
-        const response = await fetch(`${backendUrl}/Staff/trucks/${currentData.id}`, {
-          method: 'PUT', // or 'PATCH' if you want to update only some fields
+    const payload = {
+      Truck_model: currentData.Truck_model,
+      Availability: currentData.Availability, 
+      Plate_number: currentData.Plate_number,
+      Maintenance: currentData.Maintenance, 
+      Remarks: currentData.Remarks,
+      driver: currentData.driver, 
+      worker_set: currentData.worker_set  
+    };
+    console.log(payload)
+  
+    try {
+      let response;
+      if (isEditing) {
+        response = await fetch(`${backendUrl}/Staff/trucks/${currentData.id}`, {  
+          method: 'PATCH',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify(currentData),
+          body: JSON.stringify(payload),
         });
-  
-        if (!response.ok) {
-          throw new Error('Failed to update the record');
-        }
-  
-        const updatedData = await response.json(); // Get updated data from response
-        setData(data.map(row => (row.id === updatedData.id ? updatedData : row)));
-      } catch (error) {
-        console.error('Error updating data:', error);
-      }
-    } else {
-      try {
-        const maxId = data.length > 0 ? Math.max(...data.map(row => row.id)) : 0;
-        const response = await fetch(`${backendUrl}/Staff/trucks`, {
+      } else {
+        console.log("Attempting to add a new record");
+        response = await fetch(`${backendUrl}/Staff/trucks/`, {  
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ ...currentData, id: undefined }), // Assuming backend generates ID
+          body: JSON.stringify(payload),
         });
-  
-        if (!response.ok) {
-          throw new Error('Failed to add new record');
-        }
-  
-        const newRecord = await response.json(); // Get the newly created record
-        setData([...data, newRecord]);
-      } catch (error) {
-        console.error('Error adding data:', error);
       }
+  
+      if (!response.ok) {
+        throw new Error(isEditing ? 'Failed to update the record' : 'Failed to add new record');
+      }
+  
+      // Parse the response only once
+      const savedRecord = await response.json();
+  
+      // Update local state with the saved/updated record
+      if (isEditing) {
+        setData(data.map(row => (row.id === savedRecord.id ? savedRecord : row)));
+      } else {
+        setData([...data, savedRecord]);
+      }
+  
+      // Close the modal and reset the form
+      setIsModalOpen(false);
+      setCurrentData({ Truck_model: '', Availability: "", Plate_number: '', Remarks: '', Maintenance: '', driver: null, worker_set: [] });
+      fetchData();
+    } catch (error) {
+      console.error('Error in save operation:', error);
     }
-    setIsModalOpen(false);
-    setCurrentData({ Truck_model: '',Availability:"",Plate_number: '',Remarks: '',Maintenance: '' ,Location:""});
   };
+  
+  
 
   const handleDelete = async (id) => {
     if (window.confirm('هل أنت متأكد أنك تريد حذف هذا الصف؟')) {
@@ -166,7 +167,6 @@ const [locationOptions, setLocationOptions] = useState([]);
           إضافة عنصر جديد
         </Button>
       </div>
-
       <Table
         height={420}
         data={getData()}
@@ -175,7 +175,7 @@ const [locationOptions, setLocationOptions] = useState([]);
         onSortColumn={handleSortColumn}
         loading={loading}
         className="table" 
-        style={{ direction: 'rtl' }}
+        style={{ direction: 'rtl', tableLayout: 'auto' }} 
       >
         <Column width={50} align="center" fixed sortable>
           <HeaderCell className="table-header">رقم</HeaderCell>
@@ -188,13 +188,30 @@ const [locationOptions, setLocationOptions] = useState([]);
         </Column>
 
         <Column width={130} sortable>
-          <HeaderCell className="table-header">الحالة</HeaderCell>
+          <HeaderCell className="table-header">متاحة</HeaderCell>
           <Cell>
-            {rowData => {
-              const availability = availabilityOptions.find(a => a.id === rowData.Availability);
-              return availability ? availability.condition : 'Unknown'; 
-            }}
-         </Cell>
+            {rowData => rowData.Availability ? 'نعم' : 'كلا'}
+          </Cell>
+        </Column>
+        <Column width={150} sortable>
+          <HeaderCell className="table-header">السائق</HeaderCell>
+          <Cell>{rowData => {
+                const driver = drivers.find(driver => driver.id === rowData.driver);
+                return driver ? driver.Full_Name : 'لا يوجد سائق';
+      }}</Cell>
+       </Column>
+       <Column width={250} flexGrow={1} sortable>
+          <HeaderCell className="table-header">العمال</HeaderCell>
+          <Cell> 
+          {rowData => {
+            const workerNames = rowData.worker_set ? rowData.worker_set.map(workerId => {
+            const worker = workers.find(worker => worker.id === workerId);
+            return worker ? worker.Full_Name : null;
+        }).filter(name => name !== null) : [];
+
+        return workerNames.length > 0 ? workerNames.join(', ') : 'لا يوجد عمال';
+      }}
+          </Cell>
         </Column>
 
         <Column width={200} sortable>
@@ -212,15 +229,6 @@ const [locationOptions, setLocationOptions] = useState([]);
           <Cell dataKey="Maintenance" />
         </Column>
 
-        <Column width={200} flexGrow={1} sortable>
-          <HeaderCell className="table-header">الموقع</HeaderCell>
-          <Cell>
-            {rowData => {
-              const name = locationOptions.find(a => a.id === rowData.Location);
-              return name ? name.Name : 'Unknown'; 
-            }}
-         </Cell>
-        </Column>
 
         <Column width={150} fixed>
           <HeaderCell className="table-header">الإجراءات</HeaderCell>
@@ -249,6 +257,7 @@ const [locationOptions, setLocationOptions] = useState([]);
         </Column>
       </Table>
 
+
       <CustomPagination
         total={data.length}
         limit={limit}
@@ -272,23 +281,6 @@ const [locationOptions, setLocationOptions] = useState([]);
                 onChange={value => setCurrentData(prev => ({ ...prev, Truck_model: value }))}
               />
             </Form.Group>
-            {/* Dropdown for Availability */}
-            <Form.Group>
-              <Form.ControlLabel>الحالة</Form.ControlLabel>
-              <SelectPicker
-                data={availabilityOptions.map(option => ({
-                  label: option.condition,
-                  value: option.id,
-                }))}
-                placeholder="اختر الحالة"
-                value={currentData.Availability || null}
-                onChange={value => setCurrentData(prev => ({
-                  ...prev,
-                  Availability: value
-                }))}
-                block
-              />
-            </Form.Group>
             <Form.Group>
               <Form.Control
                 name="Plate_number"
@@ -296,6 +288,15 @@ const [locationOptions, setLocationOptions] = useState([]);
                 value={currentData.Plate_number}
                 onChange={value => setCurrentData(prev => ({ ...prev, Plate_number: value }))}
               />
+            </Form.Group>
+            <Form.Group>
+            <Checkbox
+              name="Availability"
+              checked={currentData.Availability}
+              onChange={(_, checked) => setCurrentData(prev => ({ ...prev, Availability: checked }))}
+            >
+              متاحة
+            </Checkbox>
             </Form.Group>
             <Form.Group>
               <Form.Control
@@ -306,6 +307,28 @@ const [locationOptions, setLocationOptions] = useState([]);
               />
             </Form.Group>
             <Form.Group>
+              <Form.ControlLabel>السائق</Form.ControlLabel>
+              <SelectPicker
+                data={drivers.filter(driver => driver.Truck===null || driver.Truck === currentData.id).map(driver => ({ label: driver.Full_Name, value: driver.id }))}
+                value={currentData.driver}
+                onChange={value => setCurrentData(prev => ({ ...prev, driver: value }))}
+                placeholder="اختر السائق"
+              />
+            </Form.Group>
+            <Form.Group>
+              <Form.ControlLabel>العمال</Form.ControlLabel>
+              <CheckboxGroup
+                value={currentData.worker_set}
+                onChange={value => setCurrentData(prev => ({ ...prev, worker_set: value }))}
+              >
+                {workers.filter(worker => worker.Truck===null || worker.Truck === currentData.id).map(worker => (
+                  <Checkbox key={worker.id} value={worker.id}>
+                    {worker.Full_Name}
+                  </Checkbox>
+                ))}
+              </CheckboxGroup>
+            </Form.Group>
+            <Form.Group>
               <Form.Control
                 name="Maintenance"
                 placeholder="الأعطال"
@@ -313,23 +336,7 @@ const [locationOptions, setLocationOptions] = useState([]);
                 onChange={value => setCurrentData(prev => ({ ...prev, Maintenance: value }))}
               />
             </Form.Group>
-            {/* Dropdown for Location */}
-            <Form.Group>
-              <Form.ControlLabel>الموقع</Form.ControlLabel>
-              <SelectPicker
-                data={locationOptions.map(option => ({
-                  label: option.Name,
-                  value: option.id,
-                }))}
-                placeholder="اختر الموقع"
-                value={currentData.Location || null}
-                onChange={value => setCurrentData(prev => ({
-                  ...prev,
-                  Location: value
-                }))}
-                block
-              />
-            </Form.Group>
+            
           </Form>
         </Modal.Body>
         <Modal.Footer style={{ textAlign: 'left' }}>

@@ -1,4 +1,4 @@
-import { useLocation } from "react-router-dom";
+import { useLocation  } from "react-router-dom";
 import {
   DropdownMenu,
   DropdownItem,
@@ -9,6 +9,7 @@ import {
   Container,
   Media,
 } from "reactstrap";
+import axios from 'axios';
 import routes from "../../routes"; // Import the routes array
 
 const AdminNavbar = (props) => {
@@ -34,6 +35,25 @@ const AdminNavbar = (props) => {
     });
 
     return routeName;
+  };
+  const backendUrl = process.env.REACT_APP_BACKEND_URL;
+  
+  const handleLogout = async () => {
+    // Implement your logout logic here (clear authentication tokens, etc.)
+    
+    try {
+        console.log('Logging out...');
+        
+        const response = await axios.put(backendUrl, {
+          on_trip: false 
+        });
+      } catch (error) {
+        console.error('Error updating truck trip:', error);
+      }
+    localStorage.removeItem('token');
+    localStorage.removeItem('role');
+    localStorage.removeItem('truck_id');
+    window.location.href = '/login';
   };
 
   return (
@@ -61,8 +81,11 @@ const AdminNavbar = (props) => {
                   <Media className="mr-2 d-none d-lg-block"></Media>
                 </Media>
               </DropdownToggle>
-              <DropdownMenu className="dropdown-menu-arrow" left>
-                <DropdownItem href="#pablo" onClick={(e) => e.preventDefault()}>
+              <DropdownMenu className="dropdown-menu-arrow">
+                <DropdownItem href="#pablo" onClick={(e) => {
+                  e.preventDefault();
+                  handleLogout();
+                  }}>
                   <span>تسجيل الخروج</span>
                   <i className="ni ni-user-run" />
                 </DropdownItem>

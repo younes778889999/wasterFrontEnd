@@ -1,0 +1,76 @@
+/* Center the login window */
+.login-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    background-color: #f0f8ff; /* Light blue background */
+  }
+  
+  /* Style the login card */
+  .login-card {
+    width: 400px;
+    background: linear-gradient(135deg, #b3cde0, #6497b1); /* Bluish gradient */
+    border-radius: 8px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    padding: 2rem;
+  }
+  
+  /* Make the login header text bigger */
+  .login-header {
+    font-size: 2rem;
+    font-weight: bold;
+    color: #ffffff; /* White text */
+    text-align: center;
+  }
+  
+  /* Form input styles */
+  .login-input-group {
+    margin-bottom: 1rem;
+  }
+  
+  .login-input-group input {
+    padding: 10px;
+    border-radius: 5px;
+    border: none;
+  }
+  
+  .login-btn {
+    width: 100%;
+    background-color: #005b96;
+    color: #ffffff;
+    border: none;
+    padding: 10px;
+    font-size: 1.2rem;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background 0.3s;
+  }
+  
+  .login-btn:hover {
+    background-color: #03396c; /* Darker blue on hover */
+  }
+  
+  /* Error message style */
+  .error-message {
+    color: red;
+    text-align: center;
+    margin-top: 10px;
+  }
+  
+.anonymous-complaint-btn {
+  width: 100%;
+  background-color: #6c757d; /* Gray color for the back button */
+  color: #ffffff; /* White text */
+  border: none;
+  padding: 10px;
+  font-size: 1.2rem;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background 0.3s;
+  margin-top: 10px; /* Add some space between the buttons */
+}
+
+.anonymous-complaint-btn:hover {
+  background-color: #5a6268; /* Darker gray on hover */
+}

@@ -1,70 +1,100 @@
 import Index from "views/Index.js";
 import Maps from "views/examples/Maps.js";
-import Login from "views/examples/Login.js";
-import Table1 from "views/examples/Table1.js";
-import Table2 from "views/examples/Table2.js";
-import Table3 from "views/examples/Table3.js";
-import Table4 from "views/examples/Table4.js";
-import Table5 from "views/examples/Table5.js";
+import Trucks from "views/examples/Trucks.js";
+import Workers from "views/examples/Workers.js";
+import Employees from "views/examples/employees.js";
+import Containers from "views/examples/Containers.js";
+import Locations from "views/examples/Locations.js";
 import Complaints from "views/examples/Complaints.js";
-import Icons from "views/examples/Icons.js";
-
+import Users from "views/examples/Users.js";
+import Drivers from "views/examples/Drivers.js";
+import AddComplaints from "views/examples/AddComplaints.js";
+import Trips from "views/examples/Trips.js"
+import PendingChanges from "views/examples/PendingChanges";
+import Permissions from "views/examples/permission";
 var routes = [
   {
     path: "/index",
     name: "الإحصائيات",
-    icon: "ni ni-chart-bar-32",
+    icon: "ni ni-chart-bar-32 text-green",
     component: <Index />,
     layout: "/admin",
   },
   {
-    path: "/icons",
-    name: "الرموز",
-    icon: "ni ni-planet text-blue",
-    component: <Icons />,
+    path: "/users",
+    name: "المستخدمين",
+    icon: "ni ni-circle-08",
+    component: <Users />,
+    layout: "/admin",
+  },
+  {
+    path: "/permissions",
+    name: "الصلاحيات",
+    icon: "ni ni-lock-circle-open text-yellow",
+    component: <Permissions />,
+    layout: "/admin",
+  },
+  {
+    path: "/PendingChanges",
+    name: "طلبات التعديل",
+    icon: "ni ni-settings-gear-65 text-silver",
+    component: <PendingChanges />,
     layout: "/admin",
   },
   {
     path: "/maps",
-    name: "خرائط",
-    icon: "ni ni-pin-3 text-orange",
+    name: "الخرائط",
+    icon: "ni ni-pin-3 text-red",
     component: <Maps />,
     layout: "/admin",
   },
   {
     collapse: true,
     name: "الجداول",
-    icon: "ni ni-bullet-list-67 text-red",
+    icon: "ni ni-bullet-list-67 text-blue",
     state: "tablesCollapse",
+    layout: "/admin",
     views: [
       {
-        path: "/table1",
-        name: "جدول 1",
-        component: <Table1 />,
+        path: "/trucks",
+        name: "جدول الشاحنات",
+        component: <Trucks />,
         layout: "/admin",
       },
       {
-        path: "/table2",
-        name: "جدول 2",
-        component: <Table2 />,
+        path: "/trips",
+        name: "جدول الرحلات",
+        component: <Trips />,
         layout: "/admin",
       },
       {
-        path: "/table3",
-        name: "جدول 3",
-        component: <Table3 />,
+        path: "/workers",
+        name: "جدول العمال",
+        component: <Workers />,
         layout: "/admin",
       },
       {
-        path: "/table4",
-        name: "جدول 4",
-        component: <Table4 />,
+        path: "/employees",
+        name: "جدول الموظفين",
+        component: <Employees />,
         layout: "/admin",
       },
       {
-        path: "/table5",
-        name: "جدول 5",
-        component: <Table5 />,
+        path: "/Drivers",
+        name: "جدول السائقين",
+        component: <Drivers />,
+        layout: "/admin",
+      },
+      {
+        path: "/Containers",
+        name: "جدول المكبات",
+        component: <Containers />,
+        layout: "/admin",
+      },
+      {
+        path: "/Locations",
+        name: "جدول المواقع",
+        component: <Locations />,
         layout: "/admin",
       },
     ],
@@ -76,13 +106,160 @@ var routes = [
     component: <Complaints />,
     layout: "/admin",
   },
+
   {
-    path: "/login",
-    name: "تسجيل الدخول",
-    icon: "ni ni-key-25 text-info",
-    component: <Login />,
-    layout: "/auth",
+    path: "/index",
+    name: "الإحصائيات",
+    icon: "ni ni-chart-bar-32",
+    component: <Index />,
+    layout: "/manager_user",
   },
+  {
+    path: "/maps",
+    name: "الخرائط",
+    icon: "ni ni-pin-3 text-orange",
+    component: <Maps />,
+    layout: "/manager_user",
+  },
+  {
+    collapse: true,
+    name: "الجداول",
+    icon: "ni ni-bullet-list-67 text-red",
+    state: "tablesCollapse",
+    layout: "/manager_user",
+    views: [
+      {
+        path: "/trucks",
+        name: "جدول الشاحنات",
+        component: <Trucks />,
+        layout: "/manager_user",
+      },
+      {
+        path: "/trips",
+        name: "جدول الرحلات",
+        component: <Trips />,
+        layout: "/manager_user",
+      },
+      {
+        path: "/workers",
+        name: "جدول العمال",
+        component: <Workers />,
+        layout: "/manager_user",
+      },
+      {
+        path: "/employees",
+        name: "جدول الموظفين",
+        component: <Employees />,
+        layout: "/manager_user",
+      },
+      {
+        path: "/Drivers",
+        name: "جدول السائقين",
+        component: <Drivers />,
+        layout: "/manager_user",
+      },
+      {
+        path: "/Containers",
+        name: "جدول المكبات",
+        component: <Containers />,
+        layout: "/manager_user",
+      },
+      {
+        path: "/Locations",
+        name: "جدول المواقع",
+        component: <Locations />,
+        layout: "/manager_user",
+      },
+    ],
+  },
+  {
+    path: "/complaints",
+    name: "الشكاوى",
+    icon: "ni ni-notification-70",
+    component: <Complaints />,
+    layout: "/manager_user",
+  },
+
+
+  {
+    path: "/index",
+    name: "الإحصائيات",
+    icon: "ni ni-chart-bar-32",
+    component: <Index />,
+    layout: "/employee_user",
+  },
+  {
+    path: "/maps",
+    name: "الخرائط",
+    icon: "ni ni-pin-3 text-orange",
+    component: <Maps />,
+    layout: "/employee_user",
+  },
+  {
+    collapse: true,
+    name: "الجداول",
+    icon: "ni ni-bullet-list-67 text-red",
+    state: "tablesCollapse",
+    layout: "/employee_user",
+    views: [
+      {
+        path: "/trucks",
+        name: "جدول الشاحنات",
+        component: <Trucks />,
+        layout: "/employee_user",
+      },
+      {
+        path: "/trips",
+        name: "جدول الرحلات",
+        component: <Trips />,
+        layout: "/employee_user",
+      },
+      {
+        path: "/workers",
+        name: "جدول العمال",
+        component: <Workers />,
+        layout: "/employee_user",
+      },
+      {
+        path: "/employees",
+        name: "جدول الموظفين",
+        component: <Employees />,
+        layout: "/employee_user",
+      },
+      {
+        path: "/Drivers",
+        name: "جدول السائقين",
+        component: <Drivers />,
+        layout: "/employee_user",
+      },
+      
+      {
+        path: "/Containers",
+        name: "جدول المكبات",
+        component: <Containers />,
+        layout: "/employee_user",
+      },
+      {
+        path: "/Locations",
+        name: "جدول المواقع",
+        component: <Locations />,
+        layout: "/employee_user",
+      },
+    ],
+  },
+  {
+    path: "/complaints",
+    name: "الشكاوى",
+    icon: "ni ni-notification-70",
+    component: <Complaints />,
+    layout: "/employee_user",
+  },
+  {
+    path: "/add-complaints",
+    name: "تقديم شكوى",
+    component: <AddComplaints />,
+    layout: "/auth",
+    },
 ];
 
 export default routes;

@@ -9,15 +9,14 @@ import {
   NavItem,
   NavLink,
   Nav,
-  Container,
-  Row,
-  Col,
 } from "reactstrap";
 
 const Sidebar = (props) => {
   const [collapseOpen, setCollapseOpen] = useState(false);
   const [collapseState, setCollapseState] = useState({ tablesCollapse: false });
   const [isOpen, setIsOpen] = useState(false); // State for open/close sidebar
+
+  const { routes, logo, userRole } = props; // Destructure userRole from props
 
   // Toggle collapse for mobile view
   const toggleCollapse = () => {
@@ -42,11 +41,15 @@ const Sidebar = (props) => {
     setIsOpen((prevIsOpen) => !prevIsOpen);
   };
 
-  // Create links for the sidebar
+  // Create links for the sidebar, filtered by userRole
   const createLinks = (routes) => {
+    const filteredRoutes = routes.filter(
+      (route) => !route.layout || route.layout === `/${userRole}`
+    );
+
     return (
       <div dir="rtl" style={{ width: isOpen ? "250px" : "0" }}>
-        {routes.map((prop, key) => {
+        {filteredRoutes.map((prop, key) => {
           if (prop.collapse) {
             return (
               <NavItem key={key}>
@@ -96,8 +99,6 @@ const Sidebar = (props) => {
     );
   };
 
-  const { routes, logo } = props;
-
   let navbarBrandProps;
   if (logo && logo.innerLink) {
     navbarBrandProps = {
@@ -125,7 +126,6 @@ const Sidebar = (props) => {
         <button className="togglebtn" onClick={toggleNav} title="فتح القائمة">
           &#9776; {/* Icon for opening */}
         </button>
-
       </div>
     </>
   );
@@ -153,6 +153,7 @@ Sidebar.propTypes = {
       ),
     })
   ),
+  userRole: PropTypes.string.isRequired, // Add userRole as a required prop
 };
 
 export default Sidebar;

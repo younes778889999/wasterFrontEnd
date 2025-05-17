@@ -1,0 +1,113 @@
+/* Center the form on the page */
+.anonymous-complaint-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  background-color: #f0f8ff; /* Light blue background */
+}
+
+/* Style the form card */
+.anonymous-complaint-card {
+  width: 500px; /* Slightly wider than the login card */
+  background: linear-gradient(135deg, #b3cde0, #6497b1); /* Bluish gradient */
+  border-radius: 8px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  padding: 2rem;
+}
+
+/* Header styling */
+.anonymous-complaint-header {
+  font-size: 2rem;
+  font-weight: bold;
+  color: #ffffff; /* White text */
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+
+/* Input field styling */
+.complaint-input {
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 1rem;
+  border: none;
+  border-radius: 5px;
+  font-size: 1rem;
+  background-color: rgba(255, 255, 255, 0.9); /* Slightly transparent white */
+  color: #333;
+}
+
+.complaint-input:focus {
+  outline: none;
+  box-shadow: 0 0 5px rgba(0, 123, 255, 0.5); /* Blue glow on focus */
+}
+
+/* Textarea styling */
+.complaint-textarea {
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 1rem;
+  border: none;
+  border-radius: 5px;
+  font-size: 1rem;
+  background-color: rgba(255, 255, 255, 0.9); /* Slightly transparent white */
+  color: #333;
+  resize: vertical; /* Allow vertical resizing */
+  min-height: 150px; /* Minimum height */
+}
+
+.complaint-textarea:focus {
+  outline: none;
+  box-shadow: 0 0 5px rgba(0, 123, 255, 0.5); /* Blue glow on focus */
+}
+
+/* Submit button styling */
+.submit-button {
+  width: 100%;
+  background-color: #005b96; /* Dark blue */
+  color: #ffffff; /* White text */
+  border: none;
+  padding: 10px;
+  font-size: 1.2rem;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+.submit-button:hover {
+  background-color: #03396c; /* Darker blue on hover */
+}
+
+/* Error message styling */
+.error-message {
+  color: #ff4444; /* Red */
+  text-align: center;
+  margin-top: 1rem;
+  font-size: 0.9rem;
+}
+
+/* Success message styling */
+.success-message {
+  color: #00C851; /* Green */
+  text-align: center;
+  margin-top: 1rem;
+  font-size: 0.9rem;
+}
+
+/* Back button styling */
+.back-button {
+  width: 100%;
+  background-color: #6c757d; /* Gray color for the back button */
+  color: #ffffff; /* White text */
+  border: none;
+  padding: 10px;
+  font-size: 1.2rem;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background 0.3s;
+  margin-top: 10px; /* Add some space between the buttons */
+}
+
+.back-button:hover {
+  background-color: #5a6268; /* Darker gray on hover */
+}

@@ -56,10 +56,10 @@
 }
 
 .togglebtn {
-  font-size: 18px;
+  font-size: 22px;
   cursor: pointer;
-  background-color: #111;
-  color: white;
+  background-color: transparent;
+  color: black;
   padding: 10px 15px;
   border: none;
   position: fixed; /* Fixed to the right */
@@ -69,5 +69,5 @@
 }
 
 .togglebtn:hover {
-  background-color: #444;
+  color: #686767;
 }

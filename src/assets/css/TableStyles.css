@@ -1,39 +1,49 @@
-/* TableStyles.css */
-
 .table {
-    background-color: #f2f2f2; /* Light gray background for the table */
-  }
-  
-  .table-header {
-    background-color: #e0e0e0; /* Header gray background */
-  }
-  
-  .table-row {
-    transition: background-color 0.3s ease;
-  }
-  
-  .table-row:hover {
-    background-color: #d0d0d0; /* Slightly darker gray on hover */
-  }
-  
-  .add-button {
-    background: linear-gradient(90deg, #4caf50, #81c784); /* Gradient color */
-    color: white;
-    display: flex;
-    align-items: center;
-    padding: 5px 10px; /* Smaller padding for the button */
-  }
-  
-  .add-button .icon {
-    margin-right: 5px; /* Space between icon and text */
-  }
+  background-color: #f2f2f2; /* Light gray background for the table */
+  width: 100%; /* Ensure the table takes full width */
+  border-collapse: collapse; /* Remove space between table cells */
+}
 
-  .rs-modal-header,
+.table-header {
+  background-color: #e0e0e0; /* Header gray background */
+  text-align: center; /* Center align header text */
+  vertical-align: middle; /* Center vertically in header */
+}
+
+.table-row {
+  transition: background-color 0.3s ease;
+  text-align: center; /* Center align row content */
+  vertical-align: middle; /* Center vertically in row */
+}
+
+.table-row:hover {
+  background-color: #d0d0d0; /* Slightly darker gray on hover */
+}
+
+.add-button {
+  background: linear-gradient(90deg, #4caf50, #81c784); /* Gradient color */
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center; /* Center content inside the button */
+  padding: 5px 10px; /* Smaller padding for the button */
+}
+
+.add-button .icon {
+  margin-right: 5px; /* Space between icon and text */
+}
+
+
+
+
+
+
+.rs-modal-header,
 .rs-modal-body,
 .rs-modal-footer {
   text-align: right; /* Align text to the right */
 }
-  
+
 /* RTL Footer styles */
 .rtl-footer {
   display: flex;
@@ -54,3 +64,23 @@
   cursor: pointer;
 }
 
+.button-edit {
+  background-color: rgba(0, 123, 255, 0.6);
+  color: white;
+  margin-left: 10px; /* Space between Edit and Delete buttons */
+  transition: background-color 0.3s; /* Smooth transition for hover effect */
+}
+
+.button-edit:hover {
+  background-color: rgba(0, 123, 255, 0.8); /* Lighter shade on hover */
+}
+
+.button-delete {
+  background-color: rgba(255, 0, 0, 0.5);
+  color: white;
+  transition: background-color 0.3s; /* Smooth transition for hover effect */
+}
+
+.button-delete:hover {
+  background-color: rgba(255, 0, 0, 0.7); /* Lighter shade on hover */
+}
