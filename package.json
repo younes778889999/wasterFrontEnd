@@ -24,7 +24,7 @@
   },
   "homepage": "https://yourusername.github.io/your-repo-name",
   "scripts": {
-    "start": "cross-env NODE_OPTIONS=--max_old_space_size=4096 react-scripts start --host 0.0.0.0",
+    "start": "serve -s build",
     "build": "cross-env NODE_OPTIONS=--max_old_space_size=4096 CI=false PUBLIC_URL=/ react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
