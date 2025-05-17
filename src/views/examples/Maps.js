@@ -34,39 +34,44 @@ function playAlertRepeatedly(times = 3) {
 
   audio.play().catch(err => console.error('Playback failed:', err));
 
-}
+};
 
-const MapClickSound = () => {
-  const map = useMap();
+const initializeAudio = () => {
+  const audio = new Audio(alertsound);
+  audio.volume = 0; // Silent playback
+  return audio.play()
+    .then(() => true)
+    .catch(err => {
+      console.log('Audio permission needed');
+      return false;
+    });
+};
+
+const AudioPermissionHandler = () => {
+  const [permissionGranted, setPermissionGranted] = useState(false);
 
   useEffect(() => {
-    const handleClick = () => {
-      const audio = new Audio(alertsound);
-      let count = 0;
+    initializeAudio().then(success => {
+      if (!success) {
+        const handleFirstInteraction = () => {
+          initializeAudio().finally(() => {
+            setPermissionGranted(true);
+            document.removeEventListener('click', handleFirstInteraction);
+          });
+        };
+        
+        document.addEventListener('click', handleFirstInteraction);
+      } else {
+        setPermissionGranted(true);
+      }
+    });
+  }, []);
 
-      audio.addEventListener('error', (e) => {
-        console.error('Audio load error:', e);
-      });
-
-      audio.addEventListener('ended', () => {
-        count++;
-        if (count < 1) {
-          audio.currentTime = 0;
-          audio.play().catch(err => console.error('Playback failed:', err));
-        }
-      });
-
-      audio.play().catch(err => console.error('Playback failed:', err));
-    };
-
-    map.on('click', handleClick);
-
-    return () => {
-      map.off('click', handleClick);
-    };
-  }, [map]);
-
-  return null;
+  return permissionGranted ? null : (
+    <div className="audio-permission-overlay">
+      <p>إضغط على الشاشة لتمكين الصوت</p>
+    </div>
+  );
 };
 
 
@@ -255,8 +260,6 @@ const fetchOptimalPathWithRetry = async (waypoints, retries = 3) => {
   }
 };
 
-
-
   useEffect(() => {
     fetchTrucks();
     fetchContainers();
@@ -320,8 +323,8 @@ const fetchOptimalPathWithRetry = async (waypoints, retries = 3) => {
 
   const checkDeviations = async (initialCheck = false) => {
     const updates = [];
-    const deviationThreshold = 100;
-    const returnThreshold = 100;
+    const deviationThreshold = 30;
+    const returnThreshold = 20;
     
     trips.forEach((trip, index) => {
       const truck = trucks.find(t => t.id === trip.truck);
@@ -597,7 +600,7 @@ useEffect(() => {
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           />
-          <MapClickSound />
+           <AudioPermissionHandler />
 
           {selectedTruck && <SetMapCenter selectedTruck={selectedTruck} />}
 
