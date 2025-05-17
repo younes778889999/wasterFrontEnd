@@ -1,0 +1,9 @@
+{
+    "build": {
+      "buildCommand": "npm run build",
+      "outputDirectory": "build"
+    },
+    "deploy": {
+      "startCommand": "serve -s build"
+    }
+  }
