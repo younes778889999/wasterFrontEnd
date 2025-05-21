@@ -10,7 +10,8 @@ const Login = () => {
   const [error, setError] = useState(null);
   const navigate = useNavigate();
   
-  const handleLogin = async () => {
+  const handleLogin = async (e) => {
+      e.preventDefault();
     const payload = { username, password };
     try {
       let response = await fetch(`${backendUrl}/Staff/user/login/`, {
@@ -58,7 +59,7 @@ const Login = () => {
     <div className="login-container">
       <div className="login-card">
         <h2 className="login-header">تسجيل الدخول</h2>
-        <Form role="form">
+          <Form role="form" onSubmit={handleLogin}>
           <FormGroup className="login-input-group">
             <InputGroup className="input-group-alternative">
               <InputGroupAddon addonType="prepend">
@@ -89,7 +90,7 @@ const Login = () => {
             </InputGroup>
           </FormGroup>
           <div className="text-center">
-            <Button className="login-btn" onClick={handleLogin}>
+            <Button className="login-btn" type="submit">
               تسجيل الدخول
             </Button>
           </div>

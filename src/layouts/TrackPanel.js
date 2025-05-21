@@ -31,16 +31,16 @@ const haversineDistance = (coords1, coords2) => {
 
 const containerIcon = new L.Icon({
   iconUrl: containerIconUrl,
-  iconSize: [25, 25],
-  iconAnchor: [16, 32],
-  popupAnchor: [0, -32],
+  iconSize: [25, 25],  
+  iconAnchor: [12.5, 25],
+  popupAnchor: [0, -25], 
 });
 
 const landfillIcon = new L.Icon({
   iconUrl: landfillIconUrl,
-  iconSize: [25, 25],
-  iconAnchor: [0, 0],
-  popupAnchor: [0, 0],
+  iconSize: [25, 25],  
+  iconAnchor: [12.5, 25],
+  popupAnchor: [0, -25],
 });
 
 
@@ -259,11 +259,12 @@ const TrackPanel = () => {
   const pathCache = useRef(new Map());
   const backupInterval = useRef(null);
 
+
 const dynamicIcon = new L.Icon({
   iconUrl: truckIconUrl,
   iconSize: trip?.Deviated ? [30, 30] : [25, 25],
-  iconAnchor: trip?.Deviated ? [20, 20] : [13, 13],
-  popupAnchor: [0, trip?.Deviated ? -15 : -12],
+  iconAnchor: trip?.Deviated ? [15, 30] : [12.5, 25],
+  popupAnchor: [0, trip?.Deviated ? -30 : -25],
   className: trip?.Deviated ? 'deviated-truck' : '',
 });
   useEffect(() => {
@@ -442,8 +443,9 @@ const CenterMap = ({ currentLocation }) => {
 
       const coordinates = waypoints.map(([lat, lng]) => `${lng},${lat}`).join(';');
       const { data } = await axios.get(
-        `https://router.project-osrm.org/trip/v1/driving/${coordinates}?overview=full&geometries=geojson`,
-        { timeout: 10000 }
+        `https://router.project-osrm.org/trip/v1/driving/${coordinates}` +
+                `?overview=full&geometries=geojson&steps=true` +
+                `&source=first&destination=last&roundtrip=false`
       );
 
       const newPath = data.trips[0].geometry.coordinates.map(([lng, lat]) => [lat, lng]);
@@ -473,10 +475,10 @@ const checkDeviations = useCallback(async (initialCheck = false) => {
       console.log('[Deviation] Distance:', distance.toFixed(2), 'meters');
       
       const wasDeviated = trip.Deviated;
-      const shouldAlert = distance > 30 || (distance <= 20 && wasDeviated);
+      const shouldAlert = distance > 50 || (distance <= 50 && wasDeviated);
 
       if (initialCheck) {
-        if (distance > 30) {
+        if (distance > 50) {
           console.log('Initial deviation detected');
           await updateTripStatus(true, distance);
           updateAlert(true);
@@ -485,9 +487,9 @@ const checkDeviations = useCallback(async (initialCheck = false) => {
       }
 
       if (shouldAlert) {
-        console.log('State change detected:', distance > 30 ? 'DEVIATED' : 'RECOVERED');
+        console.log('State change detected:', distance > 50 ? 'DEVIATED' : 'RECOVERED');
         try {
-          const newDeviatedState = distance > 30;
+          const newDeviatedState = distance > 50;
           await updateTripStatus(newDeviatedState, distance);
           updateAlert(newDeviatedState);
         } catch (error) {
@@ -513,29 +515,34 @@ const checkDeviations = useCallback(async (initialCheck = false) => {
       return;
     }
 
+    const ACCURACY_THRESHOLD = 35; 
+
     const watchId = navigator.geolocation.watchPosition(
       position => {
         const newCoords = position.coords;
+        if (newCoords.accuracy <= ACCURACY_THRESHOLD) {
         if (!currentLocation || haversineDistance(currentLocation, newCoords) > 5) {
           setCurrentLocation(newCoords);
           updateTruckLocation(newCoords.latitude, newCoords.longitude);
+          }
         }
       },
       error => setLocationError(error.message),
-      { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
+      { enableHighAccuracy: true, maximumAge: 0, timeout: 1000 }
     );
 
     backupInterval.current = setInterval(() => {
       navigator.geolocation.getCurrentPosition(
         position => {
           const newCoords = position.coords;
+if (newCoords.accuracy <= ACCURACY_THRESHOLD) {
           if (!currentLocation || haversineDistance(currentLocation, newCoords) > 5) {
             setCurrentLocation(newCoords);
             updateTruckLocation(newCoords.latitude, newCoords.longitude);
-          }
+          }}
         },
         error => setLocationError(error.message))
-    }, 5000);
+    }, 2000);
 
     return () => {
       navigator.geolocation.clearWatch(watchId);
@@ -653,9 +660,6 @@ const handleEndTripAndLogout = async () => {
               </Media>
             </DropdownToggle>
               <DropdownMenu className="dropdown-menu-arrow dropdown-menu-custom">
-                <DropdownItem onClick={() => localStorage.clear()}>
-                  تسجيل الخروج
-                </DropdownItem>
                 <DropdownItem onClick={handleEndTripAndLogout}>
                   إنهاء الرحلة وتسجيل الخروج
                 </DropdownItem>

@@ -53,7 +53,7 @@ var routes = [
   {
     path: "/excel",
     name: "استيراد ملفات Excel",
-    icon: "ni ni-pin-3 text-red",
+    icon: "ni ni-single-copy-04",
     component: <Excel />,
     layout: "/admin",
   },

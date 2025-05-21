@@ -341,8 +341,8 @@ const handlePermissionGranted = () => {
 
   const checkDeviations = async (initialCheck = false) => {
     const updates = [];
-    const deviationThreshold = 30;
-    const returnThreshold = 20;
+    const deviationThreshold = 40;
+    const returnThreshold = 40;
     
     trips.forEach((trip, index) => {
       const truck = trucks.find(t => t.id === trip.truck);
@@ -463,8 +463,8 @@ const TruckMarker = React.memo(({ truck, trips }) => {
   const icon = new L.Icon({
     iconUrl: truckIconUrl,
     iconSize: isDeviated ? [30, 30] : [25, 25],
-    iconAnchor: isDeviated ? [20,20]:[13, 13],
-    popupAnchor: [0, isDeviated ? -15 : -12],
+    iconAnchor: isDeviated ? [15,30]:[12.5, 25],
+    popupAnchor: [0, isDeviated ? -30 : -25],
     className: isDeviated ? 'deviated-truck' : ''
   });
 

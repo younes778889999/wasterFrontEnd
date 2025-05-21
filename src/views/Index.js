@@ -120,7 +120,7 @@ const handleYearChange = (e) => {
             </Card>
           </Col>
 
-          <Col lg="6" xl="4" className="mb-4">
+          <Col lg="6" xl="4" className="mb-4 mt-n5">
   <Card className="card-stats">
     <CardBody>
       <Row>
