@@ -10,7 +10,6 @@ import containerIconUrl from '../../assets/img/icons/container.png';
 import landfillIconUrl from '../../assets/img/icons/landfill.png';
 import alertsound from '../../assets/sounds/alert.mp3';
 
-// Custom hook to track previous values
 function usePrevious(value) {
   const ref = useRef();
   useEffect(() => {
@@ -38,7 +37,7 @@ function playAlertRepeatedly(times = 3) {
 
 const initializeAudio = () => {
   const audio = new Audio(alertsound);
-  audio.volume = 0; // Silent playback
+  audio.volume = 0;
   return audio.play()
     .then(() => true)
     .catch(err => {
@@ -47,7 +46,7 @@ const initializeAudio = () => {
     });
 };
 
-const AudioPermissionHandler = () => {
+const AudioPermissionHandler = ({ onPermissionGranted }) => {
   const [permissionGranted, setPermissionGranted] = useState(false);
 
   useEffect(() => {
@@ -56,6 +55,7 @@ const AudioPermissionHandler = () => {
         const handleFirstInteraction = () => {
           initializeAudio().finally(() => {
             setPermissionGranted(true);
+            onPermissionGranted(); 
             document.removeEventListener('click', handleFirstInteraction);
           });
         };
@@ -63,9 +63,10 @@ const AudioPermissionHandler = () => {
         document.addEventListener('click', handleFirstInteraction);
       } else {
         setPermissionGranted(true);
+        onPermissionGranted(); 
       }
     });
-  }, []);
+  }, [onPermissionGranted]);
 
   return permissionGranted ? null : (
     <div className="audio-permission-overlay">
@@ -76,7 +77,6 @@ const AudioPermissionHandler = () => {
 
 
 const Maps = () => {
-  // State declarations
   const [trucks, setTrucks] = useState([]);
   const [containers, setContainers] = useState([]);
   const [landfills, setLandfills] = useState([]);
@@ -91,9 +91,12 @@ const Maps = () => {
   const prevTrucks = usePrevious(trucks);
   const [activeAlerts, setActiveAlerts] = useState({});
   const alertTimeoutRef = useRef({});
+  const [fetchingEnabled, setFetchingEnabled] = useState(false);
+  const intervalRef = useRef(null);
+
+
 
   const updateAlert = (truckId, isDeviated) => {
-    // Clear any existing timeout for this truck
     if (alertTimeoutRef.current[truckId]) {
       clearTimeout(alertTimeoutRef.current[truckId]);
       delete alertTimeoutRef.current[truckId];
@@ -102,7 +105,6 @@ const Maps = () => {
     setActiveAlerts(prev => {
       const newAlerts = { ...prev };
       
-      // Only update if there's a state change
       const currentState = prev[truckId]?.isDeviated;
       if (isDeviated === currentState) return prev;
       
@@ -115,14 +117,12 @@ const Maps = () => {
           timestamp: Date.now()
         };
       } else {
-        // For returns, show success message temporarily
         newAlerts[truckId] = {
           message: `✅ الشاحنة ${truckId} عادت للمسار`,
           isDeviated: false,
           timestamp: Date.now()
         };
         
-        // Set timeout to remove the return message after 5 seconds
         alertTimeoutRef.current[truckId] = setTimeout(() => {
           setActiveAlerts(prevAlerts => {
             const updated = { ...prevAlerts };
@@ -136,7 +136,6 @@ const Maps = () => {
     });
   };
 
-  // Accurate point to line segment distance calculation
   const pointToLineDistance = (point, lineStart, lineEnd) => {
     const x = point[0], y = point[1];
     const x1 = lineStart[0], y1 = lineStart[1];
@@ -167,10 +166,9 @@ const Maps = () => {
 
     const dx = x - xx;
     const dy = y - yy;
-    return Math.sqrt(dx * dx + dy * dy) * 111320; // Convert to meters
+    return Math.sqrt(dx * dx + dy * dy) * 111320;
   };
 
-  // Calculate minimum distance from point to path
   const distanceToPath = (point, path) => {
     let minDistance = Infinity;
     for (let i = 0; i < path.length - 1; i++) {
@@ -180,13 +178,14 @@ const Maps = () => {
     return minDistance;
   };
 
-  // Data fetching functions
   const fetchTrucks = async () => {
+    if (!fetchingEnabled) return;
     try {
       const response = await fetch(`${backendUrl}/Staff/trucks/`);
       if (!response.ok) throw new Error('Failed to fetch trucks');
       const data = await response.json();
-      setTrucks(data);
+      const activeTrucks = data.filter(truck => truck.on_trip === true);
+      setTrucks(activeTrucks);
     } catch (error) {
       console.error('Error fetching trucks:', error);
     }
@@ -204,6 +203,7 @@ const Maps = () => {
   };
 
   const fetchLandfills = async () => {
+    if (!fetchingEnabled) return;
     try {
       const response = await fetch(`${backendUrl}/Staff/landfills/`);
       if (!response.ok) throw new Error('Failed to fetch landfills');
@@ -215,6 +215,7 @@ const Maps = () => {
   };
 
   const fetchTrips = async () => {
+    if (!fetchingEnabled) return;
     try {
       const response = await fetch(`${backendUrl}/Staff/trips/`);
       if (!response.ok) throw new Error('Failed to fetch trips');
@@ -247,7 +248,6 @@ const fetchOptimalPathWithRetry = async (waypoints, retries = 3) => {
     const trip = data.trips?.[0];
     if (!trip || !trip.geometry) return [];
 
-    // Convert [lng,lat] → [lat,lng]
     return trip.geometry.coordinates.map(c => [c[1], c[0]]);
   } catch (err) {
     if (retries > 0) {
@@ -255,19 +255,37 @@ const fetchOptimalPathWithRetry = async (waypoints, retries = 3) => {
       return fetchOptimalPathWithRetry(waypoints, retries - 1);
     }
     console.error('Final trip attempt failed:', err);
-    // fallback to original waypoints in input order
     return waypoints;
   }
 };
 
-  useEffect(() => {
-    fetchTrucks();
-    fetchContainers();
-    fetchLandfills();
-    fetchTrips();
+const initializeDataFetching = async () => {
+    try {
+      await Promise.all([
+        fetchTrucks(),
+        fetchContainers(),
+        fetchLandfills(),
+        fetchTrips()
+      ]);
+      
+      // Start the interval for truck updates
+      intervalRef.current = setInterval(fetchTrucks, 2000);
+    } catch (error) {
+      console.error('Initial data fetching failed:', error);
+    }
+  };
 
-    const intervalId = setInterval(fetchTrucks, 2000);
-    return () => clearInterval(intervalId);
+const handlePermissionGranted = () => {
+    setFetchingEnabled(true);
+    initializeDataFetching();
+  };
+
+    useEffect(() => {
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
   }, []);
 
   useEffect(() => {
@@ -384,7 +402,6 @@ const fetchOptimalPathWithRetry = async (waypoints, retries = 3) => {
         })
       );
 
-      // Handle results
       let hasSuccessfulUpdates = false;
       results.forEach((result, i) => {
         if (result.status === 'rejected') {
@@ -419,7 +436,6 @@ useEffect(() => {
   }
 }, [trucks]);
 
-  // Event handlers
   const handleTruckChange = (event) => {
     const selectedId = event.target.value;
     const selected = trucks.find(truck => truck.id === parseInt(selectedId));
@@ -440,12 +456,10 @@ useEffect(() => {
     return colors;
   };
 
-// Create a memoized TruckMarker component
 const TruckMarker = React.memo(({ truck, trips }) => {
   const trip = trips.find(t => t.truck === truck.id);
   const isDeviated = trip?.Deviated;
   
-  // Dynamic icon creation prevents caching issues
   const icon = new L.Icon({
     iconUrl: truckIconUrl,
     iconSize: isDeviated ? [30, 30] : [25, 25],
@@ -468,7 +482,6 @@ const TruckMarker = React.memo(({ truck, trips }) => {
     </Marker>
   );
 }, (prevProps, nextProps) => {
-  // Only re-render if position or deviation status changed
   return (
     prevProps.truck.Latitude_M === nextProps.truck.Latitude_M &&
     prevProps.truck.Longitude_M === nextProps.truck.Longitude_M &&
@@ -479,7 +492,7 @@ const TruckMarker = React.memo(({ truck, trips }) => {
 
 useEffect(() => {
   if (trucks.length > 0 && tripPaths.length > 0 && trips.length > 0) {
-    checkDeviations(true); // true indicates initial check
+    checkDeviations(true);
   }
 }, [trucks, tripPaths, trips]);
 
@@ -520,7 +533,7 @@ useEffect(() => {
       }}>
         {alertsArray.map(alert => (
           <div 
-            key={`alert-${alert.truckId}`}  // Use truckId as key to prevent duplicates
+            key={`alert-${alert.truckId}`}
             style={{
               padding: '10px 15px',
               borderRadius: '4px',
@@ -557,7 +570,7 @@ useEffect(() => {
     );
   };
 
-  // Component to re-center the map
+
   const SetMapCenter = ({ selectedTruck }) => {
     const map = useMap();
     useEffect(() => {
@@ -600,7 +613,7 @@ useEffect(() => {
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           />
-           <AudioPermissionHandler />
+          <AudioPermissionHandler onPermissionGranted={handlePermissionGranted} />
 
           {selectedTruck && <SetMapCenter selectedTruck={selectedTruck} />}
 

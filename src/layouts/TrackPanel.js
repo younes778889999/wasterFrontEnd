@@ -11,6 +11,11 @@ import containerIconUrl from '../assets/img/icons/container.png';
 import landfillIconUrl from '../assets/img/icons/landfill.png';
 import alertsound from '../assets/sounds/alert.mp3';
 
+
+const backendUrl = process.env.REACT_APP_BACKEND_URL;
+const truckId = localStorage.getItem('truck_id');
+
+
 const haversineDistance = (coords1, coords2) => {
   const R = 6371e3;
   const φ1 = coords1.latitude * Math.PI/180;
@@ -23,13 +28,6 @@ const haversineDistance = (coords1, coords2) => {
             Math.sin(Δλ/2) * Math.sin(Δλ/2);
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 };
-
-const truckIcon = new L.Icon({
-  iconUrl: truckIconUrl,
-  iconSize: [25, 25],
-  iconAnchor: [22, 18],
-  popupAnchor: [0, 0],
-});
 
 const containerIcon = new L.Icon({
   iconUrl: containerIconUrl,
@@ -45,9 +43,7 @@ const landfillIcon = new L.Icon({
   popupAnchor: [0, 0],
 });
 
-const backendUrl = process.env.REACT_APP_BACKEND_URL;
 
-// Custom hook for previous value tracking
 const usePrevious = (value) => {
   const ref = useRef();
   useEffect(() => {
@@ -85,38 +81,166 @@ const initializeAudio = () => {
     });
 };
 
-// 2. Create a permission request component
-const AudioPermissionHandler = () => {
-  const [permissionGranted, setPermissionGranted] = useState(false);
+const AudioPermissionHandler = ({ setPermissionGranted }) => {
+  const [onTrip, setOnTrip] = useState(false);
 
   useEffect(() => {
-    // Try to get permission silently on mount
-    initializeAudio().then(success => {
-      if (!success) {
-        // If silent failed, show UI cue
-        const handleFirstInteraction = () => {
-          initializeAudio().finally(() => {
-            setPermissionGranted(true);
-            document.removeEventListener('click', handleFirstInteraction);
-          });
-        };
-        
-        document.addEventListener('click', handleFirstInteraction);
-      } else {
-        setPermissionGranted(true);
-      }
-    });
-  }, []);
+    fetch(`${backendUrl}/Staff/trucks/${truckId}`)
+      .then(res => res.json())
+      .then(data => {
+        setOnTrip(data?.on_trip === true);
+      })
+      .catch(err => {
+        console.error('Error fetching trip data:', err);
+        setOnTrip(false);
+      });
+  }, [truckId]);
 
-  return permissionGranted ? null : (
-    <div className="audio-permission-overlay">
-      <p>إضغط على الشاشة لتمكين الصوت</p>
+  useEffect(() => {
+    if (onTrip) {
+      initializeAudio().then(success => {
+        if (!success) {
+          const handleFirstInteraction = () => {
+            initializeAudio().finally(() => {
+              setPermissionGranted(true);
+              document.removeEventListener('click', handleFirstInteraction);
+            });
+          };
+          document.addEventListener('click', handleFirstInteraction);
+        } else {
+          setPermissionGranted(true);
+        }
+      });
+    }
+  }, [onTrip, setPermissionGranted]);
+
+  const handleStartTrip = async () => {
+    const now = new Date().toISOString();
+
+    try {
+      // First update the truck status
+      await fetch(`${backendUrl}/Staff/trucks/${truckId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          on_trip: true,
+        }),
+      });
+
+      // Then get the trip data
+      const response = await fetch(`${backendUrl}/Staff/trips/?truck=${truckId}`);
+      const tripData = await response.json();
+      
+      if (tripData.length > 0) {
+        const tripId = tripData[0].id;
+        // Update the trip with start date
+        await fetch(`${backendUrl}/Staff/trips/${tripId}`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            Start_Date: now,
+          }),
+        });
+      }
+
+      setOnTrip(true);
+      setPermissionGranted(true);
+    } catch (err) {
+      console.error('Error starting trip:', err);
+    }
+  };
+
+  if (!onTrip) {
+  return (
+      <div 
+        className="audio-permission-overlay"
+        style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.7)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 10000,
+        }}
+      >
+        <button
+          onClick={handleStartTrip}
+          style={{
+            padding: '15px 30px',
+            fontSize: '1.5rem',
+            backgroundColor: '#4CAF50',
+            color: 'white',
+            border: 'none',
+            borderRadius: '8px',
+            cursor: 'pointer',
+            boxShadow: '0 4px 8px rgba(0,0,0,0.2)',
+            transition: 'all 0.3s ease',
+            ':hover': {
+              backgroundColor: '#45a049',
+              transform: 'scale(1.05)'
+            }
+          }}
+          onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#45a049'}
+          onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#4CAF50'}
+        >
+          إضغط هنا لبدأ الرحلة
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div 
+      className="audio-permission-overlay"
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(0,0,0,0.7)',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        zIndex: 10000,
+      }}
+    >
+      <button
+        onClick={() => initializeAudio().then(setPermissionGranted)}
+        style={{
+          padding: '15px 30px',
+          fontSize: '1.5rem',
+          backgroundColor: '#2196F3',
+          color: 'white',
+          border: 'none',
+          borderRadius: '8px',
+          cursor: 'pointer',
+          boxShadow: '0 4px 8px rgba(0,0,0,0.2)',
+          transition: 'all 0.3s ease',
+          ':hover': {
+            backgroundColor: '#0b7dda',
+            transform: 'scale(1.05)'
+          }
+        }}
+        onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#0b7dda'}
+        onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#2196F3'}
+      >
+        إضغط هنا لتمكين الصوت
+      </button>
     </div>
   );
 };
 
+
 const TrackPanel = () => {
-  const truckId = localStorage.getItem('truck_id');
   const [trip, setTrip] = useState(null);
   const [containers, setContainers] = useState([]);
   const [landfill, setLandfill] = useState(null);
@@ -127,6 +251,8 @@ const TrackPanel = () => {
   const [isCalculatingPath, setIsCalculatingPath] = useState(false);
   const initialCheckDone = useRef(false);
   const checkTimeout = useRef(null);
+  const [permissionGranted, setPermissionGranted] = useState(false);
+
   
   const prevLocation = usePrevious(currentLocation);
   const alertTimeoutRef = useRef({});
@@ -193,7 +319,7 @@ const updateAlert = (isDeviated) => {
 };
 
 
-   const renderAlerts = () => {
+  const renderAlerts = () => {
     return Object.entries(activeAlerts).map(([id, alert]) => (
       <div
         key={id}
@@ -241,24 +367,25 @@ const updateAlert = (isDeviated) => {
       </div>
     ));
   };
+
+
+
 const CenterMap = ({ currentLocation }) => {
   const map = useMap();
 
   useEffect(() => {
     if (currentLocation) {
-      map.flyTo(
+      map.setView(
         [currentLocation.latitude, currentLocation.longitude],
-        map.getZoom(),
-        {
-          animate: true,
-          duration: 1.5
-        }
+        map.getZoom()
       );
     }
   }, [currentLocation, map]);
 
   return null;
 };
+
+
   const pointToLineDistance = (point, lineStart, lineEnd) => {
     const [x, y] = point;
     const [x1, y1] = lineStart;
@@ -287,6 +414,8 @@ const CenterMap = ({ currentLocation }) => {
       return Math.min(min, pointToLineDistance(point, [x1, y1], [x2, y2]));
     }, Infinity);
   };
+
+
 
   const updateTripStatus = async (deviated, distance) => {
     try {
@@ -432,6 +561,7 @@ useEffect(() => {
     }
 
     const fetchTrip = async () => {
+    if (!permissionGranted) return;
       try {
         const { data } = await axios.get(`${backendUrl}/Staff/trips/?truck=${truckId}`);
         data.length && setTrip(data[0]);
@@ -441,12 +571,15 @@ useEffect(() => {
       }
     };
     fetchTrip();
-  }, [truckId]);
+}, [permissionGranted, truckId]);
 
   useEffect(() => {
     if (!trip) return;
     
     const fetchResources = async () => {
+      if (!permissionGranted) return;
+
+
       try {
         const [containersRes, landfillRes] = await Promise.all([
           axios.get(`${backendUrl}/Staff/containers/`),
@@ -461,10 +594,35 @@ useEffect(() => {
       }
     };
     fetchResources();
-  }, [trip]);
+  }, [permissionGranted, trip]);
+
+const handleEndTripAndLogout = async () => {
+  try {
+    if (trip) {
+      const now = new Date();
+      const startDate = new Date(trip.Start_Date);
+      const durationMinutes = Math.round((now - startDate) / (1000 * 60));
+      
+      await axios.patch(`${backendUrl}/Staff/trips/${trip.id}`, {
+        Duration_min: durationMinutes
+      });
+    }
+
+    await axios.patch(`${backendUrl}/Staff/trucks/${truckId}`, {
+      on_trip: false
+    });
+
+    localStorage.clear();
+    window.location.reload();
+  } catch (error) {
+    console.error('Error ending trip:', error);
+    alert('حدث خطأ أثناء إنهاء الرحلة');
+  }
+};
+
 
   useEffect(() => {
-    if (!trip || !containers.length || !landfill || isCalculatingPath) return;
+    if (!permissionGranted || !trip || !containers.length || !landfill || isCalculatingPath) return;
 
     const waypoints = [
       [trip.initial_truck_latitude, trip.initial_truck_longitude],
@@ -473,7 +631,7 @@ useEffect(() => {
     ].filter(([lat, lng]) => lat && lng);
 
     fetchOptimalPath(waypoints).then(setPath);
-  }, [trip, containers, landfill]);
+  }, [permissionGranted, trip, containers, landfill]);
 
   return (
     <>
@@ -485,11 +643,14 @@ useEffect(() => {
                 <i className="ni ni-button-power" />
               </Media>
             </DropdownToggle>
-            <DropdownMenu className="dropdown-menu-arrow dropdown-menu-custom">
-              <DropdownItem onClick={() => localStorage.clear()}>
-                تسجيل الخروج
-              </DropdownItem>
-            </DropdownMenu>
+              <DropdownMenu className="dropdown-menu-arrow dropdown-menu-custom">
+                <DropdownItem onClick={() => localStorage.clear()}>
+                  تسجيل الخروج
+                </DropdownItem>
+                <DropdownItem onClick={handleEndTripAndLogout}>
+                  إنهاء الرحلة وتسجيل الخروج
+                </DropdownItem>
+              </DropdownMenu>
           </UncontrolledDropdown>
         </Container>
       </Navbar>
@@ -524,7 +685,9 @@ useEffect(() => {
           {renderAlerts()}
         </div>
 
-          <MapContainer
+          {!permissionGranted && <AudioPermissionHandler setPermissionGranted={setPermissionGranted} />}
+
+          { permissionGranted && (<MapContainer
             center={currentLocation ? [currentLocation.latitude, currentLocation.longitude] : [35.5418, 35.7988]}
             zoom={13}
             style={{ height: 'calc(100vh - 60px)', width: '100%' }}
@@ -532,7 +695,6 @@ useEffect(() => {
             <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
               {currentLocation && <CenterMap currentLocation={currentLocation} />}
 
-          <AudioPermissionHandler />
 
           {landfill && (
             <Marker position={[landfill.Latitude_M, landfill.Longitude_M]} icon={landfillIcon}>
@@ -546,14 +708,14 @@ useEffect(() => {
             </Marker>
           ))}
 
-{currentLocation && (
-  <Marker 
-    position={[currentLocation.latitude, currentLocation.longitude]} 
-    icon={dynamicIcon}
-  >
-    <Popup>موقعك الحالي</Popup>
-  </Marker>
-)}
+          {currentLocation && (
+            <Marker 
+              position={[currentLocation.latitude, currentLocation.longitude]} 
+              icon={dynamicIcon}
+            >
+              <Popup>موقعك الحالي</Popup>
+            </Marker>
+          )}
 
           {path.length > 0 && (
             <Polyline 
@@ -563,7 +725,7 @@ useEffect(() => {
               opacity={0.7} 
             />
           )}
-        </MapContainer>
+        </MapContainer>)}
       </Container>
     </>
   );

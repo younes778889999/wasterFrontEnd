@@ -12,6 +12,8 @@ import AddComplaints from "views/examples/AddComplaints.js";
 import Trips from "views/examples/Trips.js"
 import PendingChanges from "views/examples/PendingChanges";
 import Permissions from "views/examples/permission";
+import Excel from "views/examples/excel";
+
 var routes = [
   {
     path: "/index",
@@ -46,6 +48,13 @@ var routes = [
     name: "الخرائط",
     icon: "ni ni-pin-3 text-red",
     component: <Maps />,
+    layout: "/admin",
+  },
+  {
+    path: "/excel",
+    name: "استيراد ملفات Excel",
+    icon: "ni ni-pin-3 text-red",
+    component: <Excel />,
     layout: "/admin",
   },
   {

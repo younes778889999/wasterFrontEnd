@@ -255,7 +255,6 @@ const App = () => {
           Deviated: false,
           initial_truck_latitude: trip.initial_truck_latitude, // Include initial coordinates
           initial_truck_longitude: trip.initial_truck_longitude, // Include initial coordinates
-          Start_Date: new Date().toISOString(), // Add current time as start date
         };
   
         const response = await fetch(`${backendUrl}/Staff/trips/`, {
@@ -524,22 +523,6 @@ const App = () => {
                   placeholder="اختر المكب"
                   block
                 />
-              </Form.Group>
-              <Form.Group controlId="startDate">
-                <Form.ControlLabel>تاريخ البدء</Form.ControlLabel>
-                <Form.Control name="Start_Date" type="datetime-local" value={currentData.Start_Date} onChange={(value) => setCurrentData({ ...currentData, Start_Date: value })} />
-              </Form.Group>
-              <Form.Group controlId="duration">
-                <Form.ControlLabel>المدة (دقيقة)</Form.ControlLabel>
-                <Form.Control name="Duration_min" type="number" value={currentData.Duration_min} onChange={(value) => setCurrentData({ ...currentData, Duration_min: value })} />
-              </Form.Group>
-              <Form.Group controlId="distance">
-                <Form.ControlLabel>المسافة (كم)</Form.ControlLabel>
-                <Form.Control name="Distance_km" type="number" value={currentData.Distance_km} onChange={(value) => setCurrentData({ ...currentData, Distance_km: value })} />
-              </Form.Group>
-              <Form.Group controlId="fuelSpent">
-                <Form.ControlLabel>الوقود المستهلك (لتر)</Form.ControlLabel>
-                <Form.Control name="Fuel_Spent_Liter" type="number" value={currentData.Fuel_Spent_Liter} onChange={(value) => setCurrentData({ ...currentData, Fuel_Spent_Liter: value })} />
               </Form.Group>
               <Form.Group controlId="containers">
                 <Form.ControlLabel>الحاويات</Form.ControlLabel>
