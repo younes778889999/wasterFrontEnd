@@ -415,14 +415,12 @@ const CenterMap = ({ currentLocation }) => {
     }, Infinity);
   };
 
-
+ 
 
   const updateTripStatus = async (deviated, distance) => {
     try {
-      const res = await axios.patch(`${backendUrl}/Staff/trips/${trip.id}`, {
+      await axios.patch(`${backendUrl}/Staff/trips/${trip.id}`, {
         Deviated: deviated,
-        last_deviation_distance: distance,
-        last_updated: new Date().toISOString()
       });
       
       const { data } = await axios.get(`${backendUrl}/Staff/trips/${trip.id}`);
@@ -499,7 +497,15 @@ const checkDeviations = useCallback(async (initialCheck = false) => {
     }, initialCheck ? 0 : 5000);
   }, [trip, path, currentLocation, updateTripStatus, updateAlert]);
 
-     
+
+   const updateTruckLocation = async (latitude, longitude) => {
+    const id=localStorage.getItem('truck_id')
+    await axios.patch(`${backendUrl}/Staff/trucks/${id}`, {
+        Longitude_M: longitude,
+        Latitude_M: latitude, 
+      });
+  };
+
 
   useEffect(() => {
     if (!navigator.geolocation) {
@@ -512,6 +518,7 @@ const checkDeviations = useCallback(async (initialCheck = false) => {
         const newCoords = position.coords;
         if (!currentLocation || haversineDistance(currentLocation, newCoords) > 5) {
           setCurrentLocation(newCoords);
+          updateTruckLocation(newCoords.latitude, newCoords.longitude);
         }
       },
       error => setLocationError(error.message),
@@ -524,6 +531,7 @@ const checkDeviations = useCallback(async (initialCheck = false) => {
           const newCoords = position.coords;
           if (!currentLocation || haversineDistance(currentLocation, newCoords) > 5) {
             setCurrentLocation(newCoords);
+            updateTruckLocation(newCoords.latitude, newCoords.longitude);
           }
         },
         error => setLocationError(error.message))
@@ -533,7 +541,8 @@ const checkDeviations = useCallback(async (initialCheck = false) => {
       navigator.geolocation.clearWatch(watchId);
       clearInterval(backupInterval.current);
     };
-  }, [currentLocation]); // Add currentLocation as dependency
+  }, [currentLocation]);
+
 
 useEffect(() => {
     if (!prevLocation || !currentLocation) return;
