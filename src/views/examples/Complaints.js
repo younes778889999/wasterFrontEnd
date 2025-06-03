@@ -21,6 +21,8 @@ const App = () => {
   const [sortType, setSortType] = useState(null);
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState([]);
+  const [filterEmployee, setFilterEmployee] = useState(false); 
+  const [filterRequest, setFilterRequest] = useState(false);
   const [currentData, setCurrentData] = useState({
     Title: '', Description: '', Date_solved: '', Status: ''
   });
@@ -123,8 +125,23 @@ const App = () => {
     }, 500);
   };
 
+  const getFilteredData = () => {
+    return data.filter(item => {
+      // Employee filter
+      if (filterEmployee !== null && item.is_employee !== filterEmployee) {
+        return false;
+      }
+      // Request filter
+      if (filterRequest !== null && item.request !== filterRequest) {
+        return false;
+      }
+      return true;
+    });
+  };
+
   const getData = () => {
-    const sortedData = [...data];
+    const filteredData = getFilteredData();
+    const sortedData = [...filteredData];
     if (sortColumn && sortType) {
       sortedData.sort((a, b) => {
         let x = a[sortColumn];
@@ -143,12 +160,42 @@ const App = () => {
     <div dir="rtl">
       <Header />
       <div style={{ margin: '20px 20px' }}>
-        {userPermissions.add && (
-          <Button className="add-button" onClick={() => openModal()} appearance="primary" color="blue">
-            <FaPlus style={{ fontSize: '20px', marginRight: '5px' }} />
-            إضافة عنصر جديد
-          </Button>
-        )}
+
+        {/* Dropdown filter for employee */}
+        <Form.Group controlId="employeeFilter" style={{ marginBottom: 10 }}>
+          <SelectPicker
+            data={[
+              { label: 'مواطنين', value: false },
+              { label: 'موظفين', value: true },
+            ]}
+            placeholder="فلتر حسب الموظف"
+            style={{ width: 200 }}
+            value={filterEmployee}
+            onChange={(value) => {
+              setFilterEmployee(value);
+              setPage(1); // reset to page 1 after filter change
+            }}
+            cleanable={false}
+            searchable={false}
+          />
+        </Form.Group>
+        <Form.Group controlId="requestFilter" style={{ marginBottom: 10 }}>
+          <SelectPicker
+            data={[
+              { label: 'شكاوى', value: false },
+              { label: 'طلبات', value: true },
+            ]}
+            placeholder="فلتر حسب النوع"
+            style={{ width: 200 }}
+            value={filterRequest}
+            onChange={(value) => {
+              setFilterRequest(value);
+              setPage(1);
+            }}
+            cleanable={false}
+            searchable={false}
+          />
+        </Form.Group>
         <Table
           height={420}
           data={getData()}
@@ -158,7 +205,7 @@ const App = () => {
           onSortColumn={handleSortColumn}
           style={{ marginTop: '20px', direction: 'rtl' }}
         >
-          <Column width={50} align="center"  sortable>
+          <Column width={50} align="center" sortable>
             <HeaderCell>رقم</HeaderCell>
             <Cell dataKey="id" />
           </Column>
@@ -198,7 +245,7 @@ const App = () => {
                         className="button-edit"
                         onClick={() => openModal(rowData)}
                       >
-                        تعديل
+                        تفاصيل
                       </Button>
                     )}
                     {userPermissions.delete && (
@@ -216,59 +263,30 @@ const App = () => {
           ) : null}
         </Table>
         <CustomPagination
-          total={data.length}
+          total={getFilteredData().length}
           limit={limit}
           activePage={page}
           onLimitChange={setLimit}
           onPageChange={setPage}
         />
-        <Modal open={isModalOpen} onClose={() => setIsModalOpen(false)} size="md">
-          <Modal.Header>
-            <Modal.Title>{isEditing ? 'تعديل الشكوى' : 'إضافة شكوى جديدة'}</Modal.Title>
-          </Modal.Header>
-          <Modal.Body>
-            <Form fluid>
-              <Form.Group controlId="title">
-                <Form.ControlLabel>عنوان الشكوى</Form.ControlLabel>
-                <Form.Control name="Title" value={currentData.Title} onChange={(value) => setCurrentData({...currentData, Title: value})} />
-              </Form.Group>
-              <Form.Group controlId="description">
-                <Form.ControlLabel>الوصف</Form.ControlLabel>
-                <Form.Control name="Description" value={currentData.Description} onChange={(value) => setCurrentData({...currentData, Description: value})} />
-              </Form.Group>
-              <Form.Group controlId="date_solved">
-                <Form.ControlLabel>تاريخ الحل</Form.ControlLabel>
-                <Form.Control name="Date_solved" type="date" value={currentData.Date_solved} onChange={(value) => setCurrentData({...currentData, Date_solved: value})} />
-              </Form.Group>
-              <Form.Group controlId="status">
-                <Form.ControlLabel>الحالة</Form.ControlLabel>
-                <SelectPicker
-                  data={[{label: 'محلول', value: 'S'}, {label: 'غير محلول', value: 'U'}]}
-                  value={currentData.Status}
-                  onChange={(value) => setCurrentData({...currentData, Status: value})}
-                  block
-                />
-              </Form.Group>
-            </Form>
-          </Modal.Body>
-          <Modal.Footer>
-            <Button onClick={handleSave} appearance="primary">حفظ</Button>
-            <Button onClick={() => setIsModalOpen(false)}>إلغاء</Button>
-          </Modal.Footer>
-        </Modal>
-
-        {/* Description Pop-up Modal */}
-        <Modal open={descriptionModal} onClose={() => setDescriptionModal(false)} size="sm">
-          <Modal.Header>
-            <Modal.Title>الوصف الكامل</Modal.Title>
-          </Modal.Header>
-          <Modal.Body>
-            <p style={{ color: 'black', fontSize: '16px' }}>{descriptionContent}</p>
-          </Modal.Body>
-          <Modal.Footer>
-            <Button onClick={() => setDescriptionModal(false)}>إغلاق</Button>
-          </Modal.Footer>
-        </Modal>
+        <Modal open={isModalOpen} onClose={() => setIsModalOpen(false)} size="sm" dir="rtl">
+  <Modal.Header>
+    <Modal.Title>تفاصيل الشكوى</Modal.Title>
+  </Modal.Header>
+  <Modal.Body>
+    <div><strong>عنوان الشكوى:</strong> {currentData.Title}</div>
+    <div><strong>الوصف:</strong> {currentData.Description}</div>
+    <div><strong>الاسم</strong> {currentData.Name}</div>
+    <div><strong>الرقم</strong> {currentData.Number}</div>
+    <div><strong>تاريخ الإرسال</strong> {currentData.Date_filed}</div>
+    <div><strong>الحالة:</strong> {currentData.Status === 'S' ? 'محلول' : 'غير محلول'}</div>
+  </Modal.Body>
+  <Modal.Footer>
+    <Button onClick={() => setIsModalOpen(false)} appearance="subtle">
+      إغلاق
+    </Button>
+  </Modal.Footer>
+</Modal>
       </div>
     </div>
   );

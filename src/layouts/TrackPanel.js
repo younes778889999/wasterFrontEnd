@@ -130,7 +130,7 @@ const AudioPermissionHandler = ({ setPermissionGranted }) => {
       });
 
       // Then get the trip data
-      const response = await fetch(`${backendUrl}/Staff/trips/?truck=${truckId}`);
+      const response = await fetch(`${backendUrl}/Staff/trips/by-truck/${truckId}`);
       const tripData = await response.json();
       
       if (tripData.length > 0) {
@@ -252,6 +252,9 @@ const TrackPanel = () => {
   const initialCheckDone = useRef(false);
   const checkTimeout = useRef(null);
   const [permissionGranted, setPermissionGranted] = useState(false);
+  
+
+  const trackingIntervalRef = useRef(null);
 
   
   const prevLocation = usePrevious(currentLocation);
@@ -274,7 +277,69 @@ const dynamicIcon = new L.Icon({
     };
   }, []);
 
+  const startTrackingPath = () => {
+    if (!localStorage.getItem('path')) {
+      localStorage.setItem('path', JSON.stringify([]));
+    }
+  
+    const accuracyThreshold = 30; // meters
+  
+    const tryGetAccuratePosition = (resolve, reject) => {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { accuracy, latitude, longitude } = position.coords;
+  
+          if (accuracy <= accuracyThreshold) {
+            const timestamp = new Date().toISOString();
+            const newPoint = { timestamp, latitude, longitude };
+  
+            const existingPath = JSON.parse(localStorage.getItem('path') || '[]');
+            existingPath.push(newPoint);
+            localStorage.setItem('path', JSON.stringify(existingPath));
+  
+            console.log("✅ Accurate coordinate logged:", newPoint);
+            resolve(); // finish one cycle
+          } else {
+            console.warn(`⚠️ Inaccurate coords (accuracy: ${accuracy}m). Retrying...`);
+            // Retry after short delay (e.g., 3 sec)
+            setTimeout(() => tryGetAccuratePosition(resolve, reject), 3000);
+          }
+        },
+        (error) => {
+          console.error("Geolocation error:", error.message);
+          // Retry after short delay
+          setTimeout(() => tryGetAccuratePosition(resolve, reject), 3000);
+        },
+        { enableHighAccuracy: true } // request best possible accuracy
+      );
+    };
+  
+    const collectCoordinates = () => {
+      return new Promise((resolve, reject) => {
+        tryGetAccuratePosition(resolve, reject);
+      });
+    };
+  
+    // Run the first one immediately
+    collectCoordinates();
+  
+    // Run every 1 minute
+    trackingIntervalRef.current = setInterval(() => {
+      collectCoordinates();
+    }, 60 * 1000);
+  }
+  const stopTrackingPath = () => {
+    if (trackingIntervalRef.current) {
+      clearInterval(trackingIntervalRef.current);
+    }
+  };
 
+  useEffect(() => {
+    startTrackingPath();
+
+    // Stop tracking when component unmounts
+    return () => stopTrackingPath();
+  }, []);
 const updateAlert = (isDeviated) => {
   console.log("Call the alert");
   // Clear previous deviation alert if recovering
@@ -291,6 +356,7 @@ const updateAlert = (isDeviated) => {
       }
     });
   }
+  
 
   const alertId = `alert-${Date.now()}`;
   
@@ -579,7 +645,7 @@ useEffect(() => {
     const fetchTrip = async () => {
     if (!permissionGranted) return;
       try {
-        const { data } = await axios.get(`${backendUrl}/Staff/trips/?truck=${truckId}`);
+        const { data } = await axios.get(`${backendUrl}/Staff/trips/by-truck/${truckId}`);
         data.length && setTrip(data[0]);
       } catch (error) { 
         console.error('Trip fetch error:', error);
@@ -612,29 +678,84 @@ useEffect(() => {
     fetchResources();
   }, [permissionGranted, trip]);
 
-const handleEndTripAndLogout = async () => {
-  try {
-    if (trip) {
+  const handleEndTripAndLogout = async () => {
+    try {
       const now = new Date();
       const startDate = new Date(trip.Start_Date);
       const durationMinutes = Math.round((now - startDate) / (1000 * 60));
-      
+  
+      // 1. Patch the trip with duration
       await axios.patch(`${backendUrl}/Staff/trips/${trip.id}`, {
         Duration_min: durationMinutes
       });
+  
+      const truckId = trip.truck; // Assuming trip.Truck contains truck id
+  
+      // 2. Fetch truck data
+      const truckRes = await axios.get(`${backendUrl}/Staff/trucks/${truckId}`);
+      const truck = truckRes.data;
+  
+      // 3. Fetch driver info (assuming truck.Driver contains driver id)
+      console.log(trip.truck)
+      const driverRes = await axios.get(`${backendUrl}/Staff/drivers/${truck.driver}`);
+      const driverName = driverRes.data.Full_Name;
+  
+      // 4. Fetch workers info (assuming truck.Workers is an array of worker ids)
+      const workersNames = [];
+      for (const workerId of truck.worker_set) {
+        const workerRes = await axios.get(`${backendUrl}/Staff/workers/${workerId}`);
+        workersNames.push(workerRes.data.Full_Name);
+      }
+  
+      // 5. Fetch landfill info (trip.Landfill contains landfill id)
+      const landfillRes = await axios.get(`${backendUrl}/Staff/landfills/${trip.Landfill}`);
+      const landfillData = landfillRes.data;
+      const landfillJson = {
+        Longitude_M: landfillData.Longitude_M,
+        Latitude_M: landfillData.Latitude_M
+      };
+  
+      // 6. Build start_point JSON
+      const startPointJson = {
+        Latitude: trip.initial_truck_latitude,
+        Longitude: trip.initial_truck_longitude
+      };
+  
+      // 7. Compose payload for HistoryTrip
+      const historyTripPayload = {
+        trip_id: trip.id,
+        truck_plate: truck.Plate_number,
+        driver_name: driverName,
+        workers_name: workersNames,
+        start_time: trip.Start_Date,
+        duration_min: durationMinutes,
+        landfill: landfillJson,
+        start_point: startPointJson,
+        path: localStorage.getItem('path') ? JSON.parse(localStorage.getItem('path')) : []
+        // You can add fuel_spent or other fields if needed
+      };
+  
+      // 8. Create HistoryTrip record
+      await axios.post(`${backendUrl}/Staff/history-trips/`, historyTripPayload);
+  
+      // 9. Mark truck as not on trip
+      await axios.patch(`${backendUrl}/Staff/trucks/${truckId}`, {
+        on_trip: false
+      });
+
+
+      if (trackingIntervalRef.current) {
+        clearInterval(trackingIntervalRef.current);
+      }
+      localStorage.clear();
+      window.location.reload();
+  
+    } catch (error) {
+      console.error('Error ending trip:', error);
+      alert('حدث خطأ أثناء إنهاء الرحلة');
     }
-
-    await axios.patch(`${backendUrl}/Staff/trucks/${truckId}`, {
-      on_trip: false
-    });
-
-    localStorage.clear();
-    window.location.reload();
-  } catch (error) {
-    console.error('Error ending trip:', error);
-    alert('حدث خطأ أثناء إنهاء الرحلة');
-  }
-};
+  };
+  
 
 
   useEffect(() => {

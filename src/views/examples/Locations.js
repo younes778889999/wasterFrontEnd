@@ -260,7 +260,7 @@ const App = () => {
 
   // Don't render anything until permissions are loaded
   if (loadingPermissions) {
-    return <div>Loading...</div>;
+    return <div>يتم التحميل</div>;
   }
 
   // Don't render the table if user doesn't have view permission
@@ -269,7 +269,7 @@ const App = () => {
       <div dir="rtl">
         <Header />
         <div style={{ margin: '20px', textAlign: 'center' }}>
-          <h3>You don't have permission to view this page</h3>
+          <h3>ليس لديك الصلاحية للوصول إلى هذه الصفحة</h3>
         </div>
       </div>
     );

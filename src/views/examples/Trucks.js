@@ -21,11 +21,48 @@ const App = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const backendUrl = process.env.REACT_APP_BACKEND_URL;
-
+  const [permissions, setPermissions] = useState({
+      add: false,
+      edit: false,
+      delete: false,
+      view: false,
+      approval_chain: {}
+    });
+    const [loadingPermissions, setLoadingPermissions] = useState(true);
+  
+    const getUserType = () => {
+      return localStorage.getItem('role');
+    };
+  
   const openModal = (rowData = {}) => {
     setCurrentData(rowData);
     setIsEditing(!!rowData.id); 
     setIsModalOpen(true);
+  };
+
+  // Fetch permissions for the current user type
+  const fetchPermissions = async () => {
+    try {
+      const response = await fetch(`${backendUrl}/approvals/permissions/`);
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+      const allPermissions = await response.json();
+      
+      // Find permissions for the current user type
+      const userPermissions = allPermissions.find(p => p.user_type === getUserType());
+      
+      if (userPermissions && userPermissions.table_permissions["Trucks"]) {
+        setPermissions({
+          ...userPermissions.table_permissions["Trucks"],
+          approval_chain: userPermissions.approval_chain["Trucks"] || {}
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching permissions:', error);
+    } finally {
+      setLoadingPermissions(false);
+    }
   };
 
   const fetchData = async () => {
@@ -53,7 +90,7 @@ const App = () => {
   };
   
   useEffect(() => {
-    
+    fetchPermissions();
     fetchData();
   }, []);
   const handleSave = async () => {
@@ -70,6 +107,46 @@ const App = () => {
   
     try {
       let response;
+      const needsApproval = permissions.approval_chain?.admin || permissions.approval_chain?.manager;
+
+      if (needsApproval) {
+        // Prepare approval data based on approval chain
+        const approvalData = {
+          manager_approval: !permissions.approval_chain.manager, // False if manager needs to approve
+          admin_approval: !permissions.approval_chain.admin     // False if admin needs to approve
+        };
+
+        // Auto-approve for roles that don't need to approve
+        if (!permissions.approval_chain.manager) {
+          approvalData.manager_approval = true;
+        }
+        if (!permissions.approval_chain.admin) {
+          approvalData.admin_approval = true;
+        }
+
+        response = await fetch(`${backendUrl}/approvals/pending-changes/`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            table_name: 'Truck',
+            action: isEditing ? 'update' : 'create',
+            data: payload,
+            object_id: isEditing ? currentData.id : null,
+            ...approvalData
+          }),
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          window.alert("تم إرسال الطلب بنجاح، سيتم التعديل عند الحصول على الموافقة");
+        } else {
+          const errorData = await response.json();
+          window.alert(`Error: ${errorData.message || "حدث خطأ في إرسال الطلب"}`);
+        }
+      } else {
+        // No approval needed, modify directly
       if (isEditing) {
         response = await fetch(`${backendUrl}/Staff/trucks/${currentData.id}`, {  
           method: 'PATCH',
@@ -102,13 +179,14 @@ const App = () => {
       } else {
         setData([...data, savedRecord]);
       }
-  
+    }
       // Close the modal and reset the form
       setIsModalOpen(false);
       setCurrentData({ Truck_model: '', Availability: "", Plate_number: '', Remarks: '', Maintenance: '', driver: null, worker_set: [] });
       fetchData();
     } catch (error) {
       console.error('Error in save operation:', error);
+      window.alert("حدث خطأ أثناء محاولة حفظ البيانات");
     }
   };
   
@@ -117,18 +195,60 @@ const App = () => {
   const handleDelete = async (id) => {
     if (window.confirm('هل أنت متأكد أنك تريد حذف هذا الصف؟')) {
       try {
-        const response = await fetch(`${backendUrl}/Staff/trucks/${id}`, {
-          method: 'DELETE',
-        });
-  
-        if (!response.ok) {
-          throw new Error('Failed to delete the record');
+        let response;
+        const needsApproval = permissions.approval_chain?.admin || permissions.approval_chain?.manager;
+
+        if (needsApproval) {
+          // Prepare approval data based on approval chain
+          const approvalData = {
+            manager_approval: !permissions.approval_chain.manager,
+            admin_approval: !permissions.approval_chain.admin
+          };
+
+          // Auto-approve for roles that don't need to approve
+          if (!permissions.approval_chain.manager) {
+            approvalData.manager_approval = true;
+          }
+          if (!permissions.approval_chain.admin) {
+            approvalData.admin_approval = true;
+          }
+
+          response = await fetch(`${backendUrl}/approvals/pending-changes/`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              table_name: 'Truck',
+              action: 'delete',
+              data: {},
+              object_id: id,
+              ...approvalData
+            }),
+          });
+
+          if (response.ok) {
+            const result = await response.json();
+            window.alert("تم إرسال الطلب بنجاح، سيتم الحذف عند الحصول على الموافقة");
+          } else {
+            const errorData = await response.json();
+            window.alert(`Error: ${errorData.message || "حدث خطأ في إرسال طلب الحذف"}`);
+          }
+        } else {
+          // No approval needed, delete directly
+          response = await fetch(`${backendUrl}/Staff/trucks/${id}`, {
+            method: 'DELETE',
+          });
+
+          if (!response.ok) {
+            throw new Error('Failed to delete the record');
+          }
+
+          setData(data.filter(row => row.id !== id));
         }
-  
-        // Update local state by filtering out the deleted item
-        setData(data.filter(row => row.id !== id));
       } catch (error) {
         console.error('Error deleting data:', error);
+        window.alert("حدث خطأ أثناء محاولة حذف البيانات");
       }
     }
   };
@@ -158,15 +278,34 @@ const App = () => {
     return sortedData.slice(start, end);
   };
 
+  // Don't render anything until permissions are loaded
+    if (loadingPermissions) {
+      return <div>يتم التحميل</div>;
+    }
+  
+    // Don't render the table if user doesn't have view permission
+    if (!permissions.view) {
+      return (
+        <div dir="rtl">
+          <Header />
+          <div style={{ margin: '20px', textAlign: 'center' }}>
+            <h3>ليس لديك الصلاحية للوصول إلى هذه الصفحة</h3>
+          </div>
+        </div>
+      );
+    }
+
   return (
     <div dir="rtl">
       <Header />
-      <div style={{ margin: '20px 10px' }}>
-        <Button className="add-button" onClick={() => openModal()} appearance="primary">
-          <FaPlus style={{ fontSize: '20px', marginRight: '5px' }} />
-          إضافة عنصر جديد
-        </Button>
-      </div>
+      {permissions.add && (
+              <div style={{ margin: '20px 10px' }}>
+                <Button className="add-button" onClick={() => openModal()} appearance="primary">
+                  <FaPlus style={{ fontSize: '20px', marginRight: '5px' }} />
+                  إضافة عنصر جديد
+                </Button>
+              </div>
+            )}
       <Table
         height={420}
         data={getData()}
@@ -230,31 +369,36 @@ const App = () => {
         </Column>
 
 
-        <Column width={150} fixed>
-          <HeaderCell className="table-header">الإجراءات</HeaderCell>
-          <Cell>
-            {rowData => (
-              <>
-                <Modal.Footer style={{ textAlign: 'left' }}>
-                  <Button
-                    appearance="primary"
-                    style={{ backgroundColor: 'rgba(0, 123, 255, 0.6)', color: 'white' }} // Adjusted for transparency
-                    onClick={() => openModal(rowData)}
-                  >
-                    تعديل
-                  </Button>
-                  <Button
-                    style={{ backgroundColor: 'rgba(255, 0, 0, 0.6)', color: 'white' }} // Adjusted for transparency
-                    onClick={() => handleDelete(rowData.id)}
-                  >
-                    حذف
-                  </Button>
-                </Modal.Footer>
-
-              </>
-            )}
-          </Cell>
-        </Column>
+        {(permissions.edit || permissions.delete) && (
+                  <Column width={150} fixed>
+                    <HeaderCell className="table-header">الإجراءات</HeaderCell>
+                    <Cell>
+                      {rowData => (
+                        <>
+                          <Modal.Footer style={{ textAlign: 'left' }}>
+                            {permissions.edit && (
+                              <Button
+                                appearance="primary"
+                                style={{ backgroundColor: 'rgba(0, 123, 255, 0.6)', color: 'white' }}
+                                onClick={() => openModal(rowData)}
+                              >
+                                تعديل
+                              </Button>
+                            )}
+                            {permissions.delete && (
+                              <Button
+                                style={{ backgroundColor: 'rgba(255, 0, 0, 0.6)', color: 'white' }}
+                                onClick={() => handleDelete(rowData.id)}
+                              >
+                                حذف
+                              </Button>
+                            )}
+                          </Modal.Footer>
+                        </>
+                      )}
+                    </Cell>
+                  </Column>
+        )}
       </Table>
 
 

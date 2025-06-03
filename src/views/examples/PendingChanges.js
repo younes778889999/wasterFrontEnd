@@ -15,6 +15,19 @@ const PendingChanges = () => {
   const [currentChange, setCurrentChange] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const backendUrl = process.env.REACT_APP_BACKEND_URL;
+  const userRole=localStorage.getItem('role');
+  const tableApiMap = {
+    Trip: `${backendUrl}/Staff/trips/`,
+    Employee: `${backendUrl}/Staff/employees/`,
+    Truck: `${backendUrl}/Staff/trucks/`,
+    Waste_Container: `${backendUrl}/Staff/containers/`,
+    Worker: `${backendUrl}/Staff/workers/`,
+    Landfill: `${backendUrl}/Staff/landfills/`,
+    Complaints: `${backendUrl}/Staff/complaints/`,
+    Location: `${backendUrl}/Staff/locations/`,
+    Driver: `${backendUrl}/Staff/drivers/`,
+  };
+
 
   const openModal = (change) => {
     setCurrentChange(change);
@@ -23,7 +36,17 @@ const PendingChanges = () => {
 
   const fetchData = async () => {
     try {
-      const response = await fetch(`${backendUrl}/approvals/pending-changes/`);
+      let endpoint = '';
+    
+      if (userRole === 'manager_user') {
+        endpoint = `${backendUrl}/approvals/pending-changes/manager`;
+      } else if (userRole === 'admin') {
+        endpoint = `${backendUrl}/approvals/pending-changes/admin`;
+      } else {
+        console.error('Invalid user type');
+        return;
+      }
+      const response = await fetch(endpoint);
       if (!response.ok) {
         throw new Error(`HTTP error! Status: ${response.status}`);
       }
@@ -38,29 +61,106 @@ const PendingChanges = () => {
   useEffect(() => {
     fetchData();
   }, []);
+  
+  
 
   const handleAction = async (action) => {
-    if (!currentChange) return;
-    
-    // Define the appropriate endpoint based on action
-    const endpoint = action === 'approve' 
-      ? `${backendUrl}/approvals/approve-change/${currentChange.id}/`
-      : `${backendUrl}/approvals/reject-change/${currentChange.id}/`;
+    if (!currentChange || !userRole) return;
   
-    try {
-      const response = await fetch(endpoint, {
-        method: 'GET', // Change to GET as required by your API
-        headers: { 'Content-Type': 'application/json' },
-      });
+    const changeId = currentChange.id;
+    const updatedChange = { ...currentChange };
   
-      if (!response.ok) {
-        throw new Error(`Failed to ${action} the change`);
+    const nowISO = new Date().toISOString();
+  
+    if (action === 'reject') {
+      // 🟥 Reject path: only update status and reviewed_at
+      try {
+        await fetch(`${backendUrl}/approvals/pending-changes/${changeId}/`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            status: 'rejected',
+            reviewed_at: nowISO,
+          }),
+        });
+  
+        setIsModalOpen(false);
+        fetchData();
+      } catch (error) {
+        console.error("Failed to reject change:", error);
       }
+      return;
+    }
   
+    // ✅ Approve path
+    // Update admin_approval or manager_approval
+    if (userRole === 'admin' && !updatedChange.admin_approval) {
+      updatedChange.admin_approval = true;
+    }
+    if (userRole === 'manager_user' && !updatedChange.manager_approval) {
+      updatedChange.manager_approval = true;
+    }
+  
+    // Save updated approval state to backend
+    try {
+      await fetch(`${backendUrl}/approvals/pending-changes/${changeId}/`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          admin_approval: updatedChange.admin_approval,
+          manager_approval: updatedChange.manager_approval,
+        }),
+      });
+    } catch (error) {
+      console.error("Failed to update approval state:", error);
+      return;
+    }
+  
+    // Check if both approvals are now granted
+    if (updatedChange.admin_approval  && updatedChange.manager_approval) {
+      const apiUrl = tableApiMap[updatedChange.table_name];
+      const objectId = updatedChange.object_id;
+      const payload = updatedChange.data;
+  
+      try {
+        // Perform the final action
+        if (updatedChange.action === 'create') {
+          await fetch(apiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          });
+        } else if (updatedChange.action === 'update' && objectId) {
+          await fetch(`${apiUrl}${objectId}/`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          });
+        } else if (updatedChange.action === 'delete' && objectId) {
+          await fetch(`${apiUrl}${objectId}/`, {
+            method: 'DELETE',
+          });
+        }
+  
+        // Finalize approval in PendingChange model
+        await fetch(`${backendUrl}/approvals/pending-changes/${changeId}/`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            status: 'approved',
+            reviewed_at: nowISO,
+          }),
+        });
+  
+        setIsModalOpen(false);
+        fetchData();
+      } catch (error) {
+        console.error("Error executing final action:", error);
+      }
+    } else {
+      // Only one side approved, wait for other
       setIsModalOpen(false);
       fetchData();
-    } catch (error) {
-      console.error('Error processing change:', error);
     }
   };
   

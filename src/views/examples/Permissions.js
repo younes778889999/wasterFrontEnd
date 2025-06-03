@@ -8,7 +8,7 @@ const permissions = {
       landfills: { edit: true, delete: true, add: true, view: true },
       containers: { edit: true, delete: true, add: true, view: true },
       trips: { edit: true, delete: true, add: true, view: true },
-      complaints: { edit: false, delete: true, add: false, view: true },
+      complaints: { edit: true, delete: true, add: true, view: true },
     },
     manager_user: {
       users: { edit: false, delete: false, add: false, view: false },

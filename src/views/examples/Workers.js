@@ -14,7 +14,6 @@ const { Column, HeaderCell, Cell } = Table;
 const App = () => {
   const location = useLocation();
   const currentPath = location.pathname;
-  const { getUserType } = useAuth();
   const [limit, setLimit] = useState(10);
   const [page, setPage] = useState(1);
   const [sortColumn, setSortColumn] = useState(null);
@@ -27,17 +26,50 @@ const App = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const backendUrl = process.env.REACT_APP_BACKEND_URL;
-  const usertype = getUserType();
-  
   const pageString  = currentPath.split('/').filter(Boolean).pop() || '';
+  const [permissions, setPermissions] = useState({
+      add: false,
+      edit: false,
+      delete: false,
+      view: false,
+      approval_chain: {}
+    });
+    const [loadingPermissions, setLoadingPermissions] = useState(true);
   
-  const userPermissions = permissions[usertype]?.[pageString] || { edit: false, delete: false, add: false, view: false };
-  
+    const getUserType = () => {
+      return localStorage.getItem('role');
+    };
   const openModal = (rowData = {}) => {
     setCurrentData(rowData);
     setIsEditing(!!rowData.id);
     setIsModalOpen(true);
   };
+
+  // Fetch permissions for the current user type
+  const fetchPermissions = async () => {
+    try {
+      const response = await fetch(`${backendUrl}/approvals/permissions/`);
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+      const allPermissions = await response.json();
+      
+      // Find permissions for the current user type
+      const userPermissions = allPermissions.find(p => p.user_type === getUserType());
+      
+      if (userPermissions && userPermissions.table_permissions["Workers"]) {
+        setPermissions({
+          ...userPermissions.table_permissions["Workers"],
+          approval_chain: userPermissions.approval_chain["Workers"] || {}
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching permissions:', error);
+    } finally {
+      setLoadingPermissions(false);
+    }
+  };
+
 
   const fetchData = async () => {
     try {
@@ -60,6 +92,7 @@ const App = () => {
   };
 
   useEffect(() => {
+    fetchPermissions();
     fetchData();
   }, []);
 
@@ -79,10 +112,49 @@ const App = () => {
       Availability: currentData.Availability,
       Location:currentData.Location
     };
-    console.log(payload)
 
     try {
       let response;
+      const needsApproval = permissions.approval_chain?.admin || permissions.approval_chain?.manager;
+
+      if (needsApproval) {
+        // Prepare approval data based on approval chain
+        const approvalData = {
+          manager_approval: !permissions.approval_chain.manager, // False if manager needs to approve
+          admin_approval: !permissions.approval_chain.admin     // False if admin needs to approve
+        };
+
+        // Auto-approve for roles that don't need to approve
+        if (!permissions.approval_chain.manager) {
+          approvalData.manager_approval = true;
+        }
+        if (!permissions.approval_chain.admin) {
+          approvalData.admin_approval = true;
+        }
+
+        response = await fetch(`${backendUrl}/approvals/pending-changes/`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            table_name: 'Worker',
+            action: isEditing ? 'update' : 'create',
+            data: payload,
+            object_id: isEditing ? currentData.id : null,
+            ...approvalData
+          }),
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          window.alert("تم إرسال الطلب بنجاح، سيتم التعديل عند الحصول على الموافقة");
+        } else {
+          const errorData = await response.json();
+          window.alert(`Error: ${errorData.message || "حدث خطأ في إرسال الطلب"}`);
+        }
+      } else {
+        // No approval needed, modify directly
       if (isEditing) {
         response = await fetch(`${backendUrl}/Staff/workers/${currentData.id}`, {
           method: 'PATCH',
@@ -103,27 +175,72 @@ const App = () => {
 
       const savedRecord = await response.json();
       setData(isEditing ? data.map(row => (row.id === savedRecord.id ? savedRecord : row)) : [...data, savedRecord]);
+    }
       setIsModalOpen(false);
       setCurrentData({ Full_Name: '', Gender: '', Age: '', Certificate: '',Phone_Number:'',Status:'',Performance_Score:'',Has_Disability:'',Tool:'', Position: '', Remarks: '', Availability: '',Location:''});
     } catch (error) {
       console.error('Error in save operation:', error);
+      window.alert("حدث خطأ أثناء محاولة حفظ البيانات");
     }
   };
 
   const handleDelete = async (id) => {
     if (window.confirm('هل أنت متأكد أنك تريد حذف هذا الصف؟')) {
       try {
-        const response = await fetch(`${backendUrl}/Staff/workers/${id}`, {
-          method: 'DELETE',
-        });
+        let response;
+        const needsApproval = permissions.approval_chain?.admin || permissions.approval_chain?.manager;
 
-        if (!response.ok) {
-          throw new Error('Failed to delete the record');
+        if (needsApproval) {
+          // Prepare approval data based on approval chain
+          const approvalData = {
+            manager_approval: !permissions.approval_chain.manager,
+            admin_approval: !permissions.approval_chain.admin
+          };
+
+          // Auto-approve for roles that don't need to approve
+          if (!permissions.approval_chain.manager) {
+            approvalData.manager_approval = true;
+          }
+          if (!permissions.approval_chain.admin) {
+            approvalData.admin_approval = true;
+          }
+
+          response = await fetch(`${backendUrl}/approvals/pending-changes/`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              table_name: 'Worker',
+              action: 'delete',
+              data: {},
+              object_id: id,
+              ...approvalData
+            }),
+          });
+
+          if (response.ok) {
+            const result = await response.json();
+            window.alert("تم إرسال الطلب بنجاح، سيتم الحذف عند الحصول على الموافقة");
+          } else {
+            const errorData = await response.json();
+            window.alert(`Error: ${errorData.message || "حدث خطأ في إرسال طلب الحذف"}`);
+          }
+        } else {
+          // No approval needed, delete directly
+          response = await fetch(`${backendUrl}/Staff/workers/${id}`, {
+            method: 'DELETE',
+          });
+
+          if (!response.ok) {
+            throw new Error('Failed to delete the record');
+          }
+
+          setData(data.filter(row => row.id !== id));
         }
-
-        setData(data.filter(row => row.id !== id));
       } catch (error) {
         console.error('Error deleting data:', error);
+        window.alert("حدث خطأ أثناء محاولة حذف البيانات");
       }
     }
   };
@@ -153,11 +270,28 @@ const App = () => {
     return sortedData.slice(start, end);
   };
 
+  // Don't render anything until permissions are loaded
+    if (loadingPermissions) {
+      return <div>يتم التحميل</div>;
+    }
+  
+    // Don't render the table if user doesn't have view permission
+    if (!permissions.view) {
+      return (
+        <div dir="rtl">
+          <Header />
+          <div style={{ margin: '20px', textAlign: 'center' }}>
+            <h3>ليس لديك الصلاحية للوصول إلى هذه الصفحة</h3>
+          </div>
+        </div>
+      );
+    }
+
   return (
     <div dir="rtl">
       <Header />
       <div style={{ margin: '20px 20px' }}>
-        {userPermissions.add && (
+        {permissions.add && (
           <Button className="add-button" onClick={() => openModal()} appearance="primary" color="blue">
             <FaPlus style={{ fontSize: '20px', marginRight: '5px' }} />
             إضافة عنصر جديد
@@ -244,13 +378,13 @@ const App = () => {
             <HeaderCell>الملاحظات</HeaderCell>
             <Cell dataKey="Remarks" />
           </Column>
-          {userPermissions.edit || userPermissions.delete ? (
+          {permissions.edit || permissions.delete ? (
             <Column width={200} align="center">
               <HeaderCell>الإجراءات</HeaderCell>
               <Cell>
                 {(rowData) => (
                   <>
-                    {userPermissions.edit && (
+                    {permissions.edit && (
                       <Button
                         appearance="primary"
                         className="button-edit"
@@ -259,7 +393,7 @@ const App = () => {
                         تعديل
                       </Button>
                     )}
-                    {userPermissions.delete && (
+                    {permissions.delete && (
                       <Button
                         className="button-delete"
                         onClick={() => handleDelete(rowData.id)}
